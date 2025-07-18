@@ -134,6 +134,9 @@
     <ClCompile Include="src\shaders\shader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\headerfiles\Camera.hpp" />
+    <ClInclude Include="src\headerfiles\Chunk.hpp" />
+    <ClInclude Include="src\headerfiles\Constants.hpp" />
     <ClInclude Include="src\shaders\shader.hpp" />
   </ItemGroup>
   <ItemGroup>

@@ -3,7 +3,6 @@
 #include "shaders/shader.hpp"
 
 #include <iostream>
-#include <ctime>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -12,43 +11,23 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
-}
-
+#include "headerfiles/Camera.hpp"
+#include "headerfiles/Chunk.hpp"
+#include "headerfiles/Constants.hpp"
 
 bool wireFramed = false;
 bool qKeyPressedLastFrame = false;
 
 float opacity = 0.2f;
 
-void processInput(GLFWwindow* window) {
-    // Close Window
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        opacity = std::max(opacity - 0.01f, 0.0f);
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        opacity = std::min(opacity + 0.01f, 1.0f);
+Chunk chunks[WORLD_SIZE_X][WORLD_SIZE_Z];
 
-    // Toggle WireFrame
-    bool qKeyPressed = glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS;
-    if (qKeyPressed && !qKeyPressedLastFrame) {
-        wireFramed = !wireFramed;
-        glPolygonMode(GL_FRONT_AND_BACK, wireFramed ? GL_LINE : GL_FILL);
-    }
-    qKeyPressedLastFrame = qKeyPressed;
-}
-
-void vectorTest(Shader& ourShader) {
-    glm::mat4 trans = glm::mat4(1.0f);
-    //trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
-    trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
-    //trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
-
-    ourShader.setMatrix("transform", trans);
-}
+// Func def
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void processInput(Camera& cam, GLFWwindow* window);
 
 int main(void)
 {
@@ -61,69 +40,33 @@ int main(void)
 
 
     // Create Window
-    GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Hello World", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
         return -1;
     }
+
     glfwMakeContextCurrent(window);
+    //glfwSwapInterval(0);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     // Load OpenGL functions
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
-    
-    // Set viewport and callback for resizing window
-    int screenWidth, screenHeight;
-    glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-    glViewport(0, 0, screenWidth, screenHeight);
-
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-    // Vertex data
-    float firstTriangle[] = {
-        // positions          // colors           // texture coords
-         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
-    };
-    unsigned int indices[] = {
-        0, 1, 3, // first triangle
-        1, 2, 3  // second triangle
-    };
-
-    // -- Set up VBO and VAO --
-    unsigned int VBO, VAO, EBO;
-
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(firstTriangle), firstTriangle, GL_STATIC_DRAW);    
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
     // textures
-    unsigned int texture1, texture2;
+    unsigned int texture;
 
     // Texture 1
-    glGenTextures(1, &texture1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -145,64 +88,109 @@ int main(void)
 
     stbi_image_free(data);
 
-    // Texture 2
-    glGenTextures(1, &texture2);
-    glBindTexture(GL_TEXTURE_2D, texture2);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    data = stbi_load("src/shaders/resources/awesomeface.png", &width, &height, &nrChannels, 0);
-    if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else {
-        std::cout << "FAILED TO LOAD TEXTURE" << std::endl;
-    }
-
-    stbi_image_free(data);
+    // -----------
 
 
     Shader ourShader("src/shaders/vs/vertexShader.vs", "src/shaders/fs/fragmentShader.fs");
 
     ourShader.use();
-    ourShader.setInt("texture1", 0);
-    ourShader.setInt("texture2", 1);
+    ourShader.setInt("textureVal", 0);
 
+    for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
+        for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
+            Chunk& chunk = chunks[chunkRow][chunkCell];
+            chunk.chunkNumberX = chunkRow;
+            chunk.chunkNumberZ = chunkCell;
+            for (int x = 0; x < CHUNK_SIZE_X; x++) {
+                for (int y = 0; y < 16; y++) {
+                    for (int z = 0; z < CHUNK_SIZE_Z; z++) {
+                        chunk.Add(x, y, z);
+                    }
+                }
+            }
+        }
+    }
+    
+
+    for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
+        for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
+            Chunk& chunk = chunks[chunkRow][chunkCell];
+            chunk.buildMesh(chunks);
+        }
+    }
+    
+
+    Camera cam(window);
     while (!glfwWindowShouldClose(window))
     {
-        processInput(window);
+        float time = glfwGetTime();
+        deltaTime = time - lastFrame;
+        lastFrame = time;
+        std::cout << "FPS: " << 1.0f / deltaTime << std::endl;
+
+        processInput(cam, window);
+
 
         /* Render here */
         glClearColor(0.2f, 0.3f, 0.3f, 1);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Bind Texture
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture1);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture2);
+        glBindTexture(GL_TEXTURE_2D, texture);
 
         // Use Shaders
         ourShader.use();
-        vectorTest(ourShader);
+        cam.setProjection(ourShader);
+        cam.setCamera(ourShader);
         ourShader.setFloat("opacity", opacity);
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
+        for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
+            for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(model, glm::vec3(chunkRow * CHUNK_SIZE_X, 0, chunkCell * CHUNK_SIZE_Z));
+                ourShader.setMatrix("model", model);
+
+                Chunk& chunk = chunks[chunkRow][chunkCell];
+                chunk.render();
+            }
+        }
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    glDeleteVertexArrays(2, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-
     glfwTerminate();
     return 0;
 }
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
+
+void processInput(Camera& cam, GLFWwindow* window) {
+    // Close Window
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    // Opacity
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        opacity = std::max(opacity - 0.01f, 0.0f);
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        opacity = std::min(opacity + 0.01f, 1.0f);
+
+    // Cam input
+    cam.processCameraInput(window, deltaTime);
+
+    // Toggle WireFrame
+    bool qKeyPressed = glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS;
+    if (qKeyPressed && !qKeyPressedLastFrame) {
+        wireFramed = !wireFramed;
+        glPolygonMode(GL_FRONT_AND_BACK, wireFramed ? GL_LINE : GL_FILL);
+    }
+    qKeyPressedLastFrame = qKeyPressed;
+}
+
+
