@@ -13,6 +13,7 @@
 
 #include "headerfiles/Camera.hpp"
 #include "headerfiles/Chunk.hpp"
+#include "headerfiles/UVHelper.hpp"
 #include "headerfiles/Constants.hpp"
 
 bool wireFramed = false;
@@ -25,9 +26,12 @@ float lastFrame = 0.0f;
 
 Chunk chunks[WORLD_SIZE_X][WORLD_SIZE_Z];
 
+
 // Func def
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(Camera& cam, GLFWwindow* window);
+
+unsigned int loadTexture(const char* path);
 
 int main(void)
 {
@@ -62,52 +66,40 @@ int main(void)
     glFrontFace(GL_CCW);
 
     // textures
-    unsigned int texture;
+    //unsigned int grassSide, dirt, grassTop, stone;
 
-    // Texture 1
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    /*grassSide = loadTexture("src/shaders/resources/grass.png");
+    dirt = loadTexture("src/shaders/resources/dirt.png");
+    grassTop = loadTexture("src/shaders/resources/grass_top.png");
+    stone = loadTexture("src/shaders/resources/stone.png");*/
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    unsigned int textureAtlas;
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true);
-
-    unsigned char* data = stbi_load("src/shaders/resources/container.jpg", &width, &height, &nrChannels, 0);
-    if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else {
-        std::cout << "FAILED TO LOAD TEXTURE" << std::endl;
-    }
-
-    stbi_image_free(data);
+    textureAtlas = loadTexture("src/shaders/resources/textureatlasmcclone.png");
 
     // -----------
-
+    Camera cam(window);
 
     Shader ourShader("src/shaders/vs/vertexShader.vs", "src/shaders/fs/fragmentShader.fs");
 
     ourShader.use();
     ourShader.setInt("textureVal", 0);
 
+    glm::vec3 objectColor(1.0f, 1.0f, 1.0f);
+    glm::vec3 lightColor(0.8f, 0.8f, 0.7f);
+    glm::vec3 lightDir(-0.2f, -1.0f, -0.3f);
+
+    ourShader.setVec3("objectColor", objectColor);
+    ourShader.setVec3("lightColor", lightColor);
+    ourShader.setVec3("lightDir", lightDir);
+
     for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
         for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
             Chunk& chunk = chunks[chunkRow][chunkCell];
             chunk.chunkNumberX = chunkRow;
             chunk.chunkNumberZ = chunkCell;
-            for (int x = 0; x < CHUNK_SIZE_X; x++) {
-                for (int y = 0; y < 16; y++) {
-                    for (int z = 0; z < CHUNK_SIZE_Z; z++) {
-                        chunk.Add(x, y, z);
-                    }
-                }
-            }
+            
+            chunk.generateChunk();
         }
     }
     
@@ -118,15 +110,13 @@ int main(void)
             chunk.buildMesh(chunks);
         }
     }
-    
 
-    Camera cam(window);
     while (!glfwWindowShouldClose(window))
     {
         float time = glfwGetTime();
         deltaTime = time - lastFrame;
         lastFrame = time;
-        std::cout << "FPS: " << 1.0f / deltaTime << std::endl;
+        //std::cout << "FPS: " << 1.0f / deltaTime << std::endl;
 
         processInput(cam, window);
 
@@ -137,7 +127,7 @@ int main(void)
 
         // Bind Texture
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, textureAtlas);
 
         // Use Shaders
         ourShader.use();
@@ -194,3 +184,29 @@ void processInput(Camera& cam, GLFWwindow* window) {
 }
 
 
+unsigned int loadTexture(const char* path) {
+    unsigned int texID;
+
+    glGenTextures(1, &texID);
+
+    int width, height, nrChannels;
+
+    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
+    if (data) {
+        GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+        glBindTexture(GL_TEXTURE_2D, texID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
+    else {
+        std::cout << "FAILED TO LOAD TEXTURE" << std::endl;
+    }
+
+    stbi_image_free(data);
+    return texID;
+}
