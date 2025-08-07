@@ -12,6 +12,7 @@ public:
     ~Chunk();
 
     void Add(int x, int y, int z);
+    void removeBlock(int x, int y, int z);
 
     BlockType getBlock(int x, int y, int z);
 
@@ -23,6 +24,8 @@ public:
     void buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]);
 
     void render();
+
+    void printChunkData() const;
 
     int chunkNumberX;
     int chunkNumberZ;

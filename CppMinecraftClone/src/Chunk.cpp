@@ -1,13 +1,15 @@
 #include "headerfiles/Chunk.hpp"
 
 #define STB_PERLIN_IMPLEMENTATION
-#include "stb_perlin.h"
+#include "includes/stb_perlin.h"
 
 #include <cstdint>
 #include <glad/glad.h>
 #include <iostream>
 
 #include <glm/glm.hpp>
+
+#include "headerfiles/World.hpp"
 
 
 Chunk::~Chunk() {
@@ -20,6 +22,14 @@ void Chunk::Add(int x, int y, int z) {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z)
         return;
     ChunkData[x][y][z] = BlockType::GRASS;
+}
+
+void Chunk::removeBlock(int x, int y, int z) {
+    if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z)
+        return;
+    ChunkData[x][y][z] = BlockType::AIR;
+    meshGenerated = false;
+    buildMesh(chunks);
 }
 
 BlockType Chunk::getBlock(int x, int y, int z) {
@@ -240,9 +250,9 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
         }
     }
 
-    if (VAO == 0) glGenVertexArrays(1, &VAO);
-    if (VBO == 0) glGenBuffers(1, &VBO);
-    if (EBO == 0) glGenBuffers(1, &EBO);
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
 
@@ -270,3 +280,17 @@ void Chunk::render() {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
 }
+
+void Chunk::printChunkData() const {
+    for (int y = 60; y < 90; ++y) {
+        std::cout << "Layer Y = " << y << ":\n";
+        for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
+            for (int x = 0; x < CHUNK_SIZE_X; ++x) {
+                std::cout << (ChunkData[x][y][z] == BlockType::AIR ? "." : "#") << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << "------------------------\n";
+    }
+}
+

@@ -23,8 +23,8 @@ void main()
     float diff = max(dot(norm, -lightDir), 0.0);
     vec3 diffuse = diff * lightColor;
 
-    vec3 texColor = texture(textureVal, TexCoord).rgb;
-    vec3 result = (ambient + diffuse) * texColor * objectColor;
+    vec4 texColor = texture(textureVal, TexCoord);
+    vec3 result = (ambient + diffuse) * texColor.rgb * objectColor;
     
-    FragColor = vec4(result, opacity);
+    FragColor = vec4(result, opacity * texColor.a);
 }

@@ -1,7 +1,7 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
-#include "shaders/shader.hpp"
+#include "Shader.hpp"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -18,6 +18,11 @@ public:
     void setCamera(Shader& ourShader);
     void setProjection(Shader& ourShader);
     glm::vec3 getCamPos();
+    glm::vec3 getCamTarget();
+    glm::vec3 getCamUp();
+
+    float getYaw();
+    float getPitch();
 
 private:
     glm::vec3 cameraPos;

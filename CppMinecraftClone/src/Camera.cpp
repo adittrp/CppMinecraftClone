@@ -20,7 +20,7 @@ Camera::Camera(GLFWwindow* window) :
 }
 
 void Camera::processCameraInput(GLFWwindow* window, float& deltaTime) {
-    const float camSpeed = 50.0f * deltaTime;
+    const float camSpeed = 10.0f * deltaTime;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += camSpeed * cameraTarget;
@@ -47,6 +47,22 @@ void Camera::setProjection(Shader& ourShader) {
 
 glm::vec3 Camera::getCamPos() {
     return cameraPos;
+}
+
+glm::vec3 Camera::getCamTarget() {
+    return cameraTarget;
+}
+
+glm::vec3 Camera::getCamUp() {
+    return cameraUp;
+}
+
+float Camera::getYaw() {
+    return yaw;
+}
+
+float Camera::getPitch() {
+    return pitch;
 }
 
 void Camera::mouse_callback(GLFWwindow* window, double xpos, double ypos) {

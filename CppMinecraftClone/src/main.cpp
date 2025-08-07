@@ -1,6 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "shaders/stb_image.h"
-#include "shaders/shader.hpp"
+#include "includes/stb_image.h"
 
 #include <iostream>
 
@@ -15,23 +14,27 @@
 #include "headerfiles/Chunk.hpp"
 #include "headerfiles/UVHelper.hpp"
 #include "headerfiles/Constants.hpp"
+#include "headerfiles/Raycast.hpp"
+#include "headerfiles/World.hpp"
+#include "headerfiles/Shader.hpp"
 
 bool wireFramed = false;
 bool qKeyPressedLastFrame = false;
 
-float opacity = 0.2f;
+float opacity = 1.0f;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-Chunk chunks[WORLD_SIZE_X][WORLD_SIZE_Z];
-
-
 // Func def
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void processInput(Camera& cam, GLFWwindow* window);
 
 unsigned int loadTexture(const char* path);
+
+void crosshairSetUp(unsigned int& VAO, unsigned int& VBO);
+void highlightBlockSetUp(unsigned int& VAO, unsigned int& VBO);
 
 int main(void)
 {
@@ -54,24 +57,22 @@ int main(void)
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(0);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     // Load OpenGL functions
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
+   
     glEnable(GL_DEPTH_TEST);
+    
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
-
-    // textures
-    //unsigned int grassSide, dirt, grassTop, stone;
-
-    /*grassSide = loadTexture("src/shaders/resources/grass.png");
-    dirt = loadTexture("src/shaders/resources/dirt.png");
-    grassTop = loadTexture("src/shaders/resources/grass_top.png");
-    stone = loadTexture("src/shaders/resources/stone.png");*/
 
     unsigned int textureAtlas;
 
@@ -93,23 +94,21 @@ int main(void)
     ourShader.setVec3("lightColor", lightColor);
     ourShader.setVec3("lightDir", lightDir);
 
-    for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
-        for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
-            Chunk& chunk = chunks[chunkRow][chunkCell];
-            chunk.chunkNumberX = chunkRow;
-            chunk.chunkNumberZ = chunkCell;
-            
-            chunk.generateChunk();
-        }
-    }
-    
 
-    for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
-        for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
-            Chunk& chunk = chunks[chunkRow][chunkCell];
-            chunk.buildMesh(chunks);
-        }
-    }
+    // Set up crosshair
+    Shader crosshairShader("src/shaders/vs/crosshair.vs", "src/shaders/fs/crosshair.fs");
+    unsigned int crossVAO, crossVBO;
+
+    crosshairSetUp(crossVAO, crossVBO);
+
+    // --------------------
+    Shader highlightShader("src/shaders/vs/highlight.vs", "src/shaders/fs/highlight.fs");
+    unsigned int highlightVAO, highlightVBO;
+
+    highlightBlockSetUp(highlightVAO, highlightVBO);
+    // -------------
+
+    generateWorld();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -119,7 +118,6 @@ int main(void)
         //std::cout << "FPS: " << 1.0f / deltaTime << std::endl;
 
         processInput(cam, window);
-
 
         /* Render here */
         glClearColor(0.2f, 0.3f, 0.3f, 1);
@@ -135,22 +133,33 @@ int main(void)
         cam.setCamera(ourShader);
         ourShader.setFloat("opacity", opacity);
 
+        // Chunk Rendering
+        renderWorld(ourShader);
 
-        for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
-            for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
-                glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, glm::vec3(chunkRow * CHUNK_SIZE_X, 0, chunkCell * CHUNK_SIZE_Z));
-                ourShader.setMatrix("model", model);
+        // Highlight if looking at a block
+        highlightBlock(cam, highlightShader, highlightVAO);
 
-                Chunk& chunk = chunks[chunkRow][chunkCell];
-                chunk.render();
-            }
-        }
+        // Cross hair stuff
+        glDisable(GL_DEPTH_TEST);
+
+        crosshairShader.use();
+        glBindVertexArray(crossVAO);
+
+        glLineWidth(2.0f);
+        glDrawArrays(GL_LINES, 0, 4);
+        glBindVertexArray(0);
+
+        glEnable(GL_DEPTH_TEST);
+        // -------------------------
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    // clean up
+    glDeleteVertexArrays(1, &crossVAO);
+    glDeleteBuffers(1, &crossVBO);
 
     glfwTerminate();
     return 0;
@@ -160,6 +169,50 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        if (currentRayResult.hit) {
+            int chunkX = currentRayResult.blockPos.x / CHUNK_SIZE_X;
+            int chunkZ = currentRayResult.blockPos.z / CHUNK_SIZE_Z;
+            if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) return;
+
+            Chunk& chunk = chunks[chunkX][chunkZ];
+            glm::ivec3 localPos = currentRayResult.blockPos - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
+
+            if (localPos.x < 0 || localPos.y < 0 || localPos.z < 0 ||
+                localPos.x >= CHUNK_SIZE_X || localPos.y >= CHUNK_SIZE_Y || localPos.z >= CHUNK_SIZE_Z) return;
+
+            chunk.removeBlock(localPos.x, localPos.y, localPos.z);
+
+            int neighborX = -1;
+            if (localPos.x == 0) {
+                neighborX = chunkX - 1;
+            } else  if (localPos.x == CHUNK_SIZE_X - 1) {
+                neighborX = chunkX + 1;
+            }
+            if (neighborX >= 0 && neighborX < WORLD_SIZE_X) {
+                Chunk& neighborChunk = chunks[neighborX][chunkZ];
+                neighborChunk.buildMesh(chunks);
+            }
+
+            int neighborZ = -1;
+            if (localPos.z == 0) {
+                neighborZ = chunkZ - 1;
+            } else if (localPos.z == CHUNK_SIZE_Z - 1) {
+                neighborZ = chunkZ + 1;
+            }
+            if (neighborZ >= 0 && neighborZ < WORLD_SIZE_Z) {
+                Chunk& neighborChunk = chunks[chunkX][neighborZ];
+                neighborChunk.buildMesh(chunks);
+            }
+        }
+    }
+
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        std::cout << "Right mouse button clicked!" << std::endl;
+    }
+}
+
 void processInput(Camera& cam, GLFWwindow* window) {
     // Close Window
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -167,9 +220,9 @@ void processInput(Camera& cam, GLFWwindow* window) {
 
     // Opacity
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        opacity = std::max(opacity - 0.01f, 0.0f);
+        opacity = std::max(opacity - 0.001f, 0.0f);
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        opacity = std::min(opacity + 0.01f, 1.0f);
+        opacity = std::min(opacity + 0.001f, 1.0f);
 
     // Cam input
     cam.processCameraInput(window, deltaTime);
@@ -182,7 +235,6 @@ void processInput(Camera& cam, GLFWwindow* window) {
     }
     qKeyPressedLastFrame = qKeyPressed;
 }
-
 
 unsigned int loadTexture(const char* path) {
     unsigned int texID;
@@ -209,4 +261,94 @@ unsigned int loadTexture(const char* path) {
 
     stbi_image_free(data);
     return texID;
+}
+
+void crosshairSetUp(unsigned int& VAO, unsigned int& VBO) {
+    float crossSizeVertical = 1920.0 / 100000.0;
+    float crossSizeHorizontal = 1080.0 / 100000.0;
+
+    float crosshairVertices[] = {
+        -crossSizeHorizontal, 0.0f,
+         crossSizeHorizontal, 0.0f,
+         0.0f, -crossSizeVertical,
+         0.0f,  crossSizeVertical
+    };
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(crosshairVertices), crosshairVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+}
+
+void highlightBlockSetUp(unsigned int& VAO, unsigned int& VBO) {
+    constexpr float vertices[] = {
+        // left face
+        -0.5f, -0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+
+         0.5f,  0.5f, -0.5f, 
+        -0.5f, -0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+
+        // right face
+        -0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+
+        // front face
+        -0.5f, 0.5f, 0.5f,
+        -0.5f, 0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, 0.5f,
+        -0.5f, 0.5f, 0.5f,
+
+        // back face
+        0.5f,  0.5f,  0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+
+         0.5f, -0.5f, -0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+
+         // bottom face
+         -0.5f, -0.5f, -0.5f,
+          0.5f, -0.5f, -0.5f,
+          0.5f, -0.5f,  0.5f,
+
+          0.5f, -0.5f,  0.5f,
+         -0.5f, -0.5f,  0.5f,
+         -0.5f, -0.5f, -0.5f,
+
+         // top face
+         -0.5f,  0.5f, -0.5f, 
+          0.5f,  0.5f,  0.5f,  
+          0.5f,  0.5f, -0.5f,  
+
+          0.5f,  0.5f,  0.5f,  
+         -0.5f,  0.5f, -0.5f,  
+         -0.5f,  0.5f,  0.5f
+    };
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 }
