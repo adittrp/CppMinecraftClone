@@ -1,10 +1,10 @@
 #include "headerfiles/UVHelper.hpp"
 
 BlockUV blockTextures[] = {
-    { -1, -1, -1 },       // AIR
-    { 2, 1, 0 },          // GRASS
-    { 0, 0, 0 },          // DIRT
-    { 3, 3, 3 }           // STONE
+    { -1, -1, -1 },       
+    { 2, 1, 0 },    
+    { 0, 0, 0 }, 
+    { 3, 3, 3 } 
 };
 
 UVCoords getUVCoords(int tileIndex, int tilesPerRow, int tileSize, int atlasSize) {

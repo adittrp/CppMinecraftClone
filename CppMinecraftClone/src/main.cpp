@@ -118,8 +118,6 @@ int main(void)
         //std::cout << "FPS: " << 1.0f / deltaTime << std::endl;
 
         processInput(cam, window);
-
-        /* Render here */
         glClearColor(0.2f, 0.3f, 0.3f, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -152,12 +150,10 @@ int main(void)
         glEnable(GL_DEPTH_TEST);
         // -------------------------
 
-        /* Swap front and back buffers */
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // clean up
     glDeleteVertexArrays(1, &crossVAO);
     glDeleteBuffers(1, &crossVBO);
 
@@ -214,20 +210,16 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 void processInput(Camera& cam, GLFWwindow* window) {
-    // Close Window
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    // Opacity
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
         opacity = std::max(opacity - 0.001f, 0.0f);
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         opacity = std::min(opacity + 0.001f, 1.0f);
 
-    // Cam input
     cam.processCameraInput(window, deltaTime);
 
-    // Toggle WireFrame
     bool qKeyPressed = glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS;
     if (qKeyPressed && !qKeyPressedLastFrame) {
         wireFramed = !wireFramed;

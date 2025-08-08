@@ -39,7 +39,6 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
     glShaderSource(vertexShader, 1, &vShaderCode, nullptr);
     glCompileShader(vertexShader);
 
-    // Check for vertex shader compile errors
     int success;
     char infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
@@ -53,7 +52,6 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
     glShaderSource(fragmentShader, 1, &fShaderCode, nullptr);
     glCompileShader(fragmentShader);
 
-    // Check for fragment shader compile errors
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
@@ -66,7 +64,6 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
     glAttachShader(ID, fragmentShader);
     glLinkProgram(ID);
 
-    // Check for linking errors
     glGetProgramiv(ID, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(ID, 512, nullptr, infoLog);

@@ -170,7 +170,7 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
                         glm::vec2 uvCoords[6];
 
                         switch (face) {
-                            case 0: // left (DONE)
+                            case 0: // left
                                 uvCoords[0] = { uv.uMin, uv.vMax };
                                 uvCoords[1] = { uv.uMax, uv.vMin };
                                 uvCoords[2] = { uv.uMax, uv.vMax };
@@ -179,7 +179,7 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
                                 uvCoords[4] = { uv.uMin, uv.vMax };
                                 uvCoords[5] = { uv.uMin, uv.vMin };
                                 break;
-                            case 1: // right (DONE)
+                            case 1: // right
                                 uvCoords[0] = { uv.uMin, uv.vMax };
                                 uvCoords[1] = { uv.uMax, uv.vMax };
                                 uvCoords[2] = { uv.uMax, uv.vMin };
@@ -188,7 +188,7 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
                                 uvCoords[4] = { uv.uMin, uv.vMin };
                                 uvCoords[5] = { uv.uMin, uv.vMax };
                                 break;
-                            case 2: // front (DONE)
+                            case 2: // front
                                 uvCoords[0] = { uv.uMin, uv.vMin };
                                 uvCoords[1] = { uv.uMax, uv.vMin };
                                 uvCoords[2] = { uv.uMax, uv.vMax };
@@ -196,7 +196,7 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
                                 uvCoords[4] = { uv.uMin, uv.vMax };
                                 uvCoords[5] = { uv.uMin, uv.vMin };
                                 break;
-                            case 3: // back (DONE)
+                            case 3: // back
                                 uvCoords[0] = { uv.uMin, uv.vMin }; 
                                 uvCoords[1] = { uv.uMax, uv.vMax }; 
                                 uvCoords[2] = { uv.uMax, uv.vMin };
@@ -205,7 +205,7 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
                                 uvCoords[4] = { uv.uMin, uv.vMin };
                                 uvCoords[5] = { uv.uMin, uv.vMax };
                                 break;
-                            case 4: // bottom (DONE)
+                            case 4: // bottom 
                                 uvCoords[0] = { uv.uMin, uv.vMax };
                                 uvCoords[1] = { uv.uMax, uv.vMax }; 
                                 uvCoords[2] = { uv.uMax, uv.vMin };
@@ -214,7 +214,7 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
                                 uvCoords[4] = { uv.uMin, uv.vMin };
                                 uvCoords[5] = { uv.uMin, uv.vMax }; 
                                 break;
-                            case 5: // top (DONE)
+                            case 5: // top
                                 uvCoords[0] = { uv.uMin, uv.vMin }; 
                                 uvCoords[1] = { uv.uMax, uv.vMax }; 
                                 uvCoords[2] = { uv.uMax, uv.vMin }; 
@@ -280,17 +280,3 @@ void Chunk::render() {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
 }
-
-void Chunk::printChunkData() const {
-    for (int y = 60; y < 90; ++y) {
-        std::cout << "Layer Y = " << y << ":\n";
-        for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
-            for (int x = 0; x < CHUNK_SIZE_X; ++x) {
-                std::cout << (ChunkData[x][y][z] == BlockType::AIR ? "." : "#") << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << "------------------------\n";
-    }
-}
-
