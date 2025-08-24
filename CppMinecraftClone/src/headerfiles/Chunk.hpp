@@ -20,7 +20,7 @@ public:
 
     void generateChunk();
 
-    void buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]);
+    void buildMesh();
 
     void render();
 
@@ -34,5 +34,5 @@ private:
 	std::vector<unsigned int> indices;
 
 	unsigned int VAO = 0, VBO = 0, EBO = 0;
-	bool meshGenerated = true;
+	bool meshGenerated = false;
 };

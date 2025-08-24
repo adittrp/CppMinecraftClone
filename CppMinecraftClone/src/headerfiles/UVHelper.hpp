@@ -1,6 +1,8 @@
 #pragma once
 
-enum BlockType {
+#include <cstdint>
+
+enum BlockType : uint8_t {
     AIR,
     GRASS,
     DIRT,

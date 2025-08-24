@@ -5,4 +5,5 @@
 class Player {
 public:
 	BlockType heldBlock = BlockType::GRASS;
+	int renderDistance = 4;
 };

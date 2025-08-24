@@ -25,7 +25,7 @@ void Chunk::Add(int x, int y, int z, BlockType blockType, bool regenerateMesh) {
 
     if (regenerateMesh) {
         meshGenerated = false;
-        buildMesh(chunks);
+        buildMesh();
     }
 }
 
@@ -34,7 +34,7 @@ void Chunk::removeBlock(int x, int y, int z) {
         return;
     ChunkData[x][y][z] = BlockType::AIR;
     meshGenerated = false;
-    buildMesh(chunks);
+    buildMesh();
 }
 
 BlockType Chunk::getBlock(int x, int y, int z) {
@@ -79,27 +79,33 @@ void Chunk::generateChunk() {
             int height = minHeight + static_cast<int>(noiseValue * (maxHeight - minHeight));
 
             for (int y = 0; y < height; ++y) {
-                if (y == height - 1) {
-                    Add(x, y, z, BlockType::GRASS);
-                }
-                else if (y > height - 5) {
-                    Add(x, y, z, BlockType::DIRT);
+                if (x == 0 || x == CHUNK_SIZE_X - 1 || z == 0 || z == CHUNK_SIZE_Z - 1) {
+                    Add(x, y, z, BlockType::STONE);
                 }
                 else {
-                    Add(x, y, z, BlockType::STONE);
+                    if (y == height - 1) {
+                        Add(x, y, z, BlockType::GRASS);
+                    }
+                    else if (y > height - 5) {
+                        Add(x, y, z, BlockType::DIRT);
+                    }
+                    else {
+                        Add(x, y, z, BlockType::STONE);
+                    }
                 }
             }
         }
     }
 }
 
-void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
+void Chunk::buildMesh() {
     if (VAO != 0) glDeleteVertexArrays(1, &VAO);
     if (VBO != 0) glDeleteBuffers(1, &VBO);
     if (EBO != 0) glDeleteBuffers(1, &EBO);
 
     vertices.clear();
     indices.clear();
+
     unsigned int indexCount = 0;
 
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
@@ -289,7 +295,11 @@ void Chunk::buildMesh(Chunk(&chunks)[WORLD_SIZE_X][WORLD_SIZE_Z]) {
 }
 
 void Chunk::render() {
-    if (!meshGenerated) return;
+    if (!meshGenerated) {
+        buildMesh();
+        return;
+    }
+
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
 }

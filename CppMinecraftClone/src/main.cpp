@@ -25,7 +25,6 @@ struct AppState {
 
     bool wireFramed = false;
     bool qKeyPressedLastFrame = false;
-    float opacity = 1.0f;
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
@@ -125,7 +124,10 @@ int main(void)
         float time = glfwGetTime();
         app.deltaTime = time - app.lastFrame;
         app.lastFrame = time;
-        //std::cout << "FPS: " << 1.0f / app.deltaTime << std::endl;
+
+        float fps = 1.0f / app.deltaTime;
+        if (fps < 50)
+            std::cout << "FPS: " << fps << std::endl;
 
         processInput(app, window);
         glClearColor(0.2f, 0.3f, 0.3f, 1);
@@ -139,10 +141,28 @@ int main(void)
         ourShader.use();
         app.cam.setProjection(ourShader);
         app.cam.setCamera(ourShader);
-        ourShader.setFloat("opacity", app.opacity);
 
         // Chunk Rendering
-        renderWorld(ourShader);
+        //renderWorld(ourShader);
+
+        int playerChunkX = app.cam.getCamPos().x / CHUNK_SIZE_X;
+        int playerChunkZ = app.cam.getCamPos().z / CHUNK_SIZE_Z;
+
+        int renderBoundXLeft = std::max(0, playerChunkX - app.player.renderDistance);
+        int renderBoundXRight = std::min((int)WORLD_SIZE_X, playerChunkX + app.player.renderDistance + 1);
+        int renderBoundZLeft = std::max(0, playerChunkZ - app.player.renderDistance);
+        int renderBoundZRight = std::min((int)WORLD_SIZE_Z, playerChunkZ + app.player.renderDistance + 1);
+
+        for (int chunkRow = renderBoundXLeft; chunkRow < renderBoundXRight; chunkRow++) {
+            for (int chunkCell = renderBoundZLeft; chunkCell < renderBoundZRight; chunkCell++) {
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(model, glm::vec3(chunkRow * CHUNK_SIZE_X, 0, chunkCell * CHUNK_SIZE_Z));
+                ourShader.setMatrix("model", model);
+
+                Chunk& chunk = chunks[chunkRow][chunkCell];
+                chunk.render();
+            }
+        }
 
         // Highlight if looking at a block
         highlightBlock(app.cam, highlightShader, highlightVAO);
@@ -201,7 +221,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborX >= 0 && neighborX < WORLD_SIZE_X) {
                 Chunk& neighborChunk = chunks[neighborX][chunkZ];
-                neighborChunk.buildMesh(chunks);
+                neighborChunk.buildMesh();
             }
 
             int neighborZ = -1;
@@ -212,7 +232,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborZ >= 0 && neighborZ < WORLD_SIZE_Z) {
                 Chunk& neighborChunk = chunks[chunkX][neighborZ];
-                neighborChunk.buildMesh(chunks);
+                neighborChunk.buildMesh();
             }
         }
     }
@@ -241,7 +261,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborX >= 0 && neighborX < WORLD_SIZE_X) {
                 Chunk& neighborChunk = chunks[neighborX][chunkZ];
-                neighborChunk.buildMesh(chunks);
+                neighborChunk.buildMesh();
             }
 
             int neighborZ = -1;
@@ -253,7 +273,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborZ >= 0 && neighborZ < WORLD_SIZE_Z) {
                 Chunk& neighborChunk = chunks[chunkX][neighborZ];
-                neighborChunk.buildMesh(chunks);
+                neighborChunk.buildMesh();
             }
         }
     }
@@ -263,16 +283,11 @@ void processInput(AppState& app, GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        app.opacity = std::max(app.opacity - 0.001f, 0.0f);
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        app.opacity = std::min(app.opacity + 0.001f, 1.0f); 
-
-    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
         app.player.heldBlock = BlockType::GRASS;
-    else if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-        app.player.heldBlock = BlockType::DIRT;
     else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        app.player.heldBlock = BlockType::DIRT;
+    else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
         app.player.heldBlock = BlockType::STONE;
 
     bool sprinting = false;

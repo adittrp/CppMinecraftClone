@@ -14,13 +14,6 @@ void generateWorld() {
             chunk.generateChunk();
         }
     }
-
-    for (int chunkRow = 0; chunkRow < WORLD_SIZE_X; chunkRow++) {
-        for (int chunkCell = 0; chunkCell < WORLD_SIZE_Z; chunkCell++) {
-            Chunk& chunk = chunks[chunkRow][chunkCell];
-            chunk.buildMesh(chunks);
-        }
-    }
 }
 
 void renderWorld(Shader& ourShader) {

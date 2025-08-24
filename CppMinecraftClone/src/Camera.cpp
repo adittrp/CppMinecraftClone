@@ -1,11 +1,12 @@
 #include "headerfiles/Camera.hpp"
+#include "headerfiles/Constants.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 
 Camera::Camera(GLFWwindow* window) :
-    cameraPos(glm::vec3(0.0f, 100.0f, 3.0f)),
+    cameraPos(glm::vec3(WORLD_SIZE_X / 2 * CHUNK_SIZE_X, 90.0f, WORLD_SIZE_Z / 2 * CHUNK_SIZE_Z)),
     cameraTarget(glm::vec3(0.0f, 0.0f, -1.0f)),
     cameraUp(glm::vec3(0.0f, 1.0f, 0.0f)),
     yaw(45.0f),

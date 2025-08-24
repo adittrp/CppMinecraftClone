@@ -1,7 +1,6 @@
 #version 330 core
 
 uniform sampler2D textureVal;
-uniform float opacity;
 
 uniform vec3 objectColor;
 uniform vec3 lightColor;
@@ -26,5 +25,5 @@ void main()
     vec4 texColor = texture(textureVal, TexCoord);
     vec3 result = (ambient + diffuse) * texColor.rgb * objectColor;
     
-    FragColor = vec4(result, opacity * texColor.a);
+    FragColor = vec4(result, texColor.a);
 }
