@@ -1,5 +1,4 @@
-#ifndef CHUNK_HPP
-#define CHUNK_HPP
+#pragma once
 
 #include <vector>
 
@@ -11,7 +10,7 @@ class Chunk {
 public:
     ~Chunk();
 
-    void Add(int x, int y, int z);
+    void Add(int x, int y, int z, BlockType blockType, bool regenerateMesh = false);
     void removeBlock(int x, int y, int z);
 
     BlockType getBlock(int x, int y, int z);
@@ -25,8 +24,6 @@ public:
 
     void render();
 
-    void printChunkData() const;
-
     int chunkNumberX;
     int chunkNumberZ;
 
@@ -39,6 +36,3 @@ private:
 	unsigned int VAO = 0, VBO = 0, EBO = 0;
 	bool meshGenerated = true;
 };
-
-
-#endif

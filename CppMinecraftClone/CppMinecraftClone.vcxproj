@@ -133,6 +133,7 @@
     <ClCompile Include="src\Chunk.cpp" />
     <ClCompile Include="src\includes\glad.c" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Player.cpp" />
     <ClCompile Include="src\Raycast.cpp" />
     <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\UVHelper.cpp" />
@@ -142,6 +143,7 @@
     <ClInclude Include="src\headerfiles\Camera.hpp" />
     <ClInclude Include="src\headerfiles\Chunk.hpp" />
     <ClInclude Include="src\headerfiles\Constants.hpp" />
+    <ClInclude Include="src\headerfiles\Player.hpp" />
     <ClInclude Include="src\headerfiles\Raycast.hpp" />
     <ClInclude Include="src\headerfiles\UVHelper.hpp" />
     <ClInclude Include="src\headerfiles\World.hpp" />

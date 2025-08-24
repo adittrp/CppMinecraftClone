@@ -1,5 +1,4 @@
-#ifndef SHADER_H
-#define SHADER_H
+#pragma once
 
 #include <glad/glad.h>
 #include <string>
@@ -22,5 +21,3 @@ public:
     void setVec3(const std::string& name, glm::vec3& value) const;
     void setMatrix(const std::string& name, const glm::mat4& value) const;
 };
-
-#endif

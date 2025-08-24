@@ -1,5 +1,4 @@
-#ifndef CAMERA_HPP
-#define CAMERA_HPP
+#pragma once
 
 #include "Shader.hpp"
 
@@ -14,7 +13,7 @@ class Camera {
 public:
     Camera(GLFWwindow* window);
 
-    void processCameraInput(GLFWwindow* window, float& deltaTime);
+    void processCameraInput(GLFWwindow* window, float& deltaTime, bool sprinting);
     void setCamera(Shader& ourShader);
     void setProjection(Shader& ourShader);
     glm::vec3 getCamPos();
@@ -23,6 +22,8 @@ public:
 
     float getYaw();
     float getPitch();
+    
+    void updateFOV(bool isSprinting, float deltaTime);
 
 private:
     glm::vec3 cameraPos;
@@ -31,6 +32,8 @@ private:
 
     float yaw;
     float pitch;
+
+    float baseFOV;
     float fov;
 
     float lastX;
@@ -43,5 +46,3 @@ private:
     void processMouse(double xpos, double ypos);
     void processScroll(double yoffset);
 };
-
-#endif

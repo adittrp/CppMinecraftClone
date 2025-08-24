@@ -17,24 +17,34 @@
 #include "headerfiles/Raycast.hpp"
 #include "headerfiles/World.hpp"
 #include "headerfiles/Shader.hpp"
+#include "headerfiles/Player.hpp"
 
-bool wireFramed = false;
-bool qKeyPressedLastFrame = false;
+struct AppState {
+    Camera cam;
+    Player player;
 
-float opacity = 1.0f;
+    bool wireFramed = false;
+    bool qKeyPressedLastFrame = false;
+    float opacity = 1.0f;
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
 
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
+
+    AppState(GLFWwindow* window)
+        : cam(window) {
+    }
+};
 
 // Func def
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-void processInput(Camera& cam, GLFWwindow* window);
+void processInput(AppState& app, GLFWwindow* window);
 
 unsigned int loadTexture(const char* path);
 
 void crosshairSetUp(unsigned int& VAO, unsigned int& VBO);
 void highlightBlockSetUp(unsigned int& VAO, unsigned int& VBO);
+//
 
 int main(void)
 {
@@ -48,6 +58,7 @@ int main(void)
 
     // Create Window
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Hello World", NULL, NULL);
+    AppState app(window);
     if (!window)
     {
         glfwTerminate();
@@ -55,6 +66,7 @@ int main(void)
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetWindowUserPointer(window, &app);
     //glfwSwapInterval(0);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
@@ -79,8 +91,6 @@ int main(void)
     textureAtlas = loadTexture("src/shaders/resources/textureatlasmcclone.png");
 
     // -----------
-    Camera cam(window);
-
     Shader ourShader("src/shaders/vs/vertexShader.vs", "src/shaders/fs/fragmentShader.fs");
 
     ourShader.use();
@@ -113,11 +123,11 @@ int main(void)
     while (!glfwWindowShouldClose(window))
     {
         float time = glfwGetTime();
-        deltaTime = time - lastFrame;
-        lastFrame = time;
-        //std::cout << "FPS: " << 1.0f / deltaTime << std::endl;
+        app.deltaTime = time - app.lastFrame;
+        app.lastFrame = time;
+        //std::cout << "FPS: " << 1.0f / app.deltaTime << std::endl;
 
-        processInput(cam, window);
+        processInput(app, window);
         glClearColor(0.2f, 0.3f, 0.3f, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -127,15 +137,15 @@ int main(void)
 
         // Use Shaders
         ourShader.use();
-        cam.setProjection(ourShader);
-        cam.setCamera(ourShader);
-        ourShader.setFloat("opacity", opacity);
+        app.cam.setProjection(ourShader);
+        app.cam.setCamera(ourShader);
+        ourShader.setFloat("opacity", app.opacity);
 
         // Chunk Rendering
         renderWorld(ourShader);
 
         // Highlight if looking at a block
-        highlightBlock(cam, highlightShader, highlightVAO);
+        highlightBlock(app.cam, highlightShader, highlightVAO);
 
         // Cross hair stuff
         glDisable(GL_DEPTH_TEST);
@@ -166,6 +176,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    AppState* app = static_cast<AppState*>(glfwGetWindowUserPointer(window));
+    if (!app) return;
+
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         if (currentRayResult.hit) {
             int chunkX = currentRayResult.blockPos.x / CHUNK_SIZE_X;
@@ -205,27 +218,75 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        std::cout << "Right mouse button clicked!" << std::endl;
+        if (currentRayResult.hit) {
+            glm::ivec3 blockPos = currentRayResult.blockPos + currentRayResult.faceNormal;
+
+            int chunkX = blockPos.x / CHUNK_SIZE_X;
+            int chunkZ = blockPos.z / CHUNK_SIZE_Z;
+            if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) return;
+
+            Chunk& chunk = chunks[chunkX][chunkZ];
+            glm::ivec3 localPos = blockPos - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
+
+            if (localPos.x < 0 || localPos.y < 0 || localPos.z < 0 ||
+                localPos.x >= CHUNK_SIZE_X || localPos.y >= CHUNK_SIZE_Y || localPos.z >= CHUNK_SIZE_Z) return;
+            chunk.Add(localPos.x, localPos.y, localPos.z, app->player.heldBlock, true);
+
+            int neighborX = -1;
+            if (localPos.x == 0) {
+                neighborX = chunkX - 1;
+            }
+            else  if (localPos.x == CHUNK_SIZE_X - 1) {
+                neighborX = chunkX + 1;
+            }
+            if (neighborX >= 0 && neighborX < WORLD_SIZE_X) {
+                Chunk& neighborChunk = chunks[neighborX][chunkZ];
+                neighborChunk.buildMesh(chunks);
+            }
+
+            int neighborZ = -1;
+            if (localPos.z == 0) {
+                neighborZ = chunkZ - 1;
+            }
+            else if (localPos.z == CHUNK_SIZE_Z - 1) {
+                neighborZ = chunkZ + 1;
+            }
+            if (neighborZ >= 0 && neighborZ < WORLD_SIZE_Z) {
+                Chunk& neighborChunk = chunks[chunkX][neighborZ];
+                neighborChunk.buildMesh(chunks);
+            }
+        }
     }
 }
 
-void processInput(Camera& cam, GLFWwindow* window) {
+void processInput(AppState& app, GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        opacity = std::max(opacity - 0.001f, 0.0f);
+        app.opacity = std::max(app.opacity - 0.001f, 0.0f);
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        opacity = std::min(opacity + 0.001f, 1.0f);
+        app.opacity = std::min(app.opacity + 0.001f, 1.0f); 
 
-    cam.processCameraInput(window, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS)
+        app.player.heldBlock = BlockType::GRASS;
+    else if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+        app.player.heldBlock = BlockType::DIRT;
+    else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        app.player.heldBlock = BlockType::STONE;
+
+    bool sprinting = false;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+        sprinting = true;
+    app.cam.updateFOV(sprinting, app.deltaTime);
+    app.cam.processCameraInput(window, app.deltaTime, sprinting);
 
     bool qKeyPressed = glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS;
-    if (qKeyPressed && !qKeyPressedLastFrame) {
-        wireFramed = !wireFramed;
-        glPolygonMode(GL_FRONT_AND_BACK, wireFramed ? GL_LINE : GL_FILL);
+    if (qKeyPressed && !app.qKeyPressedLastFrame) {
+        app.wireFramed = !app.wireFramed;
+        glPolygonMode(GL_FRONT_AND_BACK, app.wireFramed ? GL_LINE : GL_FILL);
     }
-    qKeyPressedLastFrame = qKeyPressed;
+    app.qKeyPressedLastFrame = qKeyPressed;
 }
 
 unsigned int loadTexture(const char* path) {

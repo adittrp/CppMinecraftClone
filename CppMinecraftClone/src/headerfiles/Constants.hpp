@@ -1,8 +1,7 @@
-#ifndef CONSTANTS_HPP
-#define CONSTANTS_HPP
+#pragma once
 
-constexpr unsigned int WORLD_SIZE_X = 4;
-constexpr unsigned int WORLD_SIZE_Z = 4;
+constexpr unsigned int WORLD_SIZE_X = 8;
+constexpr unsigned int WORLD_SIZE_Z = 8;
 
 constexpr unsigned int CHUNK_SIZE_X = 16;
 constexpr unsigned int CHUNK_SIZE_Y = 255;
@@ -63,5 +62,3 @@ constexpr float vertexData[6][36] = {
      -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
      -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f}
 };
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef UVHELPER_HPP
-#define UVHELPER_HPP
+#pragma once
 
 enum BlockType {
     AIR,
@@ -22,5 +21,3 @@ struct UVCoords {
 };
 
 UVCoords getUVCoords(int tileIndex, int tilesPerRow, int tileSize, int atlasSize);
-
-#endif

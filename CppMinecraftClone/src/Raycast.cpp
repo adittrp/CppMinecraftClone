@@ -2,7 +2,8 @@
 #include "headerfiles/Chunk.hpp"
 #include "headerfiles/World.hpp"
 
-RaycastResult currentRayResult = { false, {} };
+
+RaycastResult currentRayResult = { false, {}, {} };
 
 bool isBlockSolid(glm::ivec3 pos) {
     int chunkX = pos.x / CHUNK_SIZE_X;
@@ -18,6 +19,8 @@ bool isBlockSolid(glm::ivec3 pos) {
     return chunk.getBlock(localPos.x, localPos.y, localPos.z) != BlockType::AIR;
 }
 
+static inline int getSign(int v) { return (v > 0) - (v < 0); }
+
 RaycastResult raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance) {
     glm::vec3 rayDir = glm::normalize(direction);
     glm::vec3 resPos;
@@ -25,6 +28,8 @@ RaycastResult raycast(const glm::vec3& origin, const glm::vec3& direction, float
     float distanceTraveled = 0.0f;
     float stepSize = 0.05f;
 
+    glm::ivec3 prevCell = glm::floor(origin);
+    glm::ivec3 cell = glm::floor(origin);
     while (distanceTraveled <= maxDistance) {
         distanceTraveled += stepSize;
         resPos = origin + rayDir * distanceTraveled;
@@ -32,17 +37,24 @@ RaycastResult raycast(const glm::vec3& origin, const glm::vec3& direction, float
         resPos.x = round(resPos.x);
         resPos.y = round(resPos.y);
         resPos.z = round(resPos.z);
+        cell = (glm::ivec3)resPos;
 
-        if (isBlockSolid(resPos)) {
-            currentRayResult = { true, (glm::ivec3)resPos };
-            return currentRayResult;
-        }
-        else {
-            currentRayResult = { false, {} };
+        if (prevCell != cell) {
+            if (isBlockSolid(cell)) {
+                glm::ivec3 dv = cell - prevCell;
+                glm::ivec3 n(0);
+                if (dv.x) n = glm::ivec3(-getSign(dv.x), 0, 0);
+                else if (dv.y) n = glm::ivec3(0, -getSign(dv.y), 0);
+                else           n = glm::ivec3(0, 0, -getSign(dv.z));
+
+                currentRayResult = { true, cell, n };
+                return currentRayResult;
+            }
+            prevCell = cell;
         }
     }
 
-    return { false, {} };
+    return { false, {}, {} };
 }
 
 void highlightBlock(Camera& cam, Shader& highlightShader, unsigned int& highlightVAO) {

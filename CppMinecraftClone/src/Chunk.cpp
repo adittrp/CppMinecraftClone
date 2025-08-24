@@ -18,10 +18,15 @@ Chunk::~Chunk() {
     glDeleteBuffers(1, &EBO);
 }
 
-void Chunk::Add(int x, int y, int z) {
+void Chunk::Add(int x, int y, int z, BlockType blockType, bool regenerateMesh) {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z)
         return;
-    ChunkData[x][y][z] = BlockType::GRASS;
+    ChunkData[x][y][z] = blockType;
+
+    if (regenerateMesh) {
+        meshGenerated = false;
+        buildMesh(chunks);
+    }
 }
 
 void Chunk::removeBlock(int x, int y, int z) {
@@ -74,7 +79,15 @@ void Chunk::generateChunk() {
             int height = minHeight + static_cast<int>(noiseValue * (maxHeight - minHeight));
 
             for (int y = 0; y < height; ++y) {
-                Add(x, y, z);
+                if (y == height - 1) {
+                    Add(x, y, z, BlockType::GRASS);
+                }
+                else if (y > height - 5) {
+                    Add(x, y, z, BlockType::DIRT);
+                }
+                else {
+                    Add(x, y, z, BlockType::STONE);
+                }
             }
         }
     }
