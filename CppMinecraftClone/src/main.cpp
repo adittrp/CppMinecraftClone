@@ -127,7 +127,7 @@ int main(void)
 
         float fps = 1.0f / app.deltaTime;
         if (fps < 50)
-            std::cout << "FPS: " << fps << std::endl;
+            std::cout <<  " FPS: " << fps << std::endl;
 
         processInput(app, window);
         glClearColor(0.2f, 0.3f, 0.3f, 1);
@@ -141,9 +141,6 @@ int main(void)
         ourShader.use();
         app.cam.setProjection(ourShader);
         app.cam.setCamera(ourShader);
-
-        // Chunk Rendering
-        //renderWorld(ourShader);
 
         int playerChunkX = app.cam.getCamPos().x / CHUNK_SIZE_X;
         int playerChunkZ = app.cam.getCamPos().z / CHUNK_SIZE_Z;
@@ -221,7 +218,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborX >= 0 && neighborX < WORLD_SIZE_X) {
                 Chunk& neighborChunk = chunks[neighborX][chunkZ];
-                neighborChunk.buildMesh();
+                neighborChunk.regenMesh();
             }
 
             int neighborZ = -1;
@@ -232,7 +229,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborZ >= 0 && neighborZ < WORLD_SIZE_Z) {
                 Chunk& neighborChunk = chunks[chunkX][neighborZ];
-                neighborChunk.buildMesh();
+                neighborChunk.regenMesh();
             }
         }
     }
@@ -261,7 +258,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborX >= 0 && neighborX < WORLD_SIZE_X) {
                 Chunk& neighborChunk = chunks[neighborX][chunkZ];
-                neighborChunk.buildMesh();
+                neighborChunk.regenMesh();
             }
 
             int neighborZ = -1;
@@ -273,7 +270,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             }
             if (neighborZ >= 0 && neighborZ < WORLD_SIZE_Z) {
                 Chunk& neighborChunk = chunks[chunkX][neighborZ];
-                neighborChunk.buildMesh();
+                neighborChunk.regenMesh();
             }
         }
     }

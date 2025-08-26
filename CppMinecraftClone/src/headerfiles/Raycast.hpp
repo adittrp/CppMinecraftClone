@@ -12,5 +12,5 @@ struct RaycastResult {
 extern RaycastResult currentRayResult;
 
 bool isBlockSolid(glm::ivec3 pos);
-RaycastResult raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);
+void raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance);
 void highlightBlock(Camera& cam, Shader& highlightShader, unsigned int& highlightVAO);

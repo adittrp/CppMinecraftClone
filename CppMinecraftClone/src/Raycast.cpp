@@ -21,7 +21,7 @@ bool isBlockSolid(glm::ivec3 pos) {
 
 static inline int getSign(int v) { return (v > 0) - (v < 0); }
 
-RaycastResult raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance) {
+void raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance) {
     glm::vec3 rayDir = glm::normalize(direction);
     glm::vec3 resPos;
 
@@ -43,28 +43,31 @@ RaycastResult raycast(const glm::vec3& origin, const glm::vec3& direction, float
             if (isBlockSolid(cell)) {
                 glm::ivec3 dv = cell - prevCell;
                 glm::ivec3 n(0);
-                if (dv.x) n = glm::ivec3(-getSign(dv.x), 0, 0);
-                else if (dv.y) n = glm::ivec3(0, -getSign(dv.y), 0);
-                else           n = glm::ivec3(0, 0, -getSign(dv.z));
+                if (dv.x)
+                    n = glm::ivec3(-getSign(dv.x), 0, 0);
+                else if (dv.y)
+                    n = glm::ivec3(0, -getSign(dv.y), 0);
+                else          
+                    n = glm::ivec3(0, 0, -getSign(dv.z));
 
                 currentRayResult = { true, cell, n };
-                return currentRayResult;
+                return;
             }
             prevCell = cell;
         }
     }
 
-    return { false, {}, {} };
+    currentRayResult = { false, {}, {} };
 }
 
 void highlightBlock(Camera& cam, Shader& highlightShader, unsigned int& highlightVAO) {
     glm::vec3 rayOrigin = cam.getCamPos();
     glm::vec3 rayDirection = cam.getCamTarget();
 
-    RaycastResult result = raycast(rayOrigin, rayDirection, 8.0f);
+    raycast(rayOrigin, rayDirection, 8.0f);
 
-    if (result.hit) {
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(result.blockPos));
+    if (currentRayResult.hit) {
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(currentRayResult.blockPos));
 
         highlightShader.use();
         cam.setProjection(highlightShader);

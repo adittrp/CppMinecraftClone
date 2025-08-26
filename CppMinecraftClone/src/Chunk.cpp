@@ -4,6 +4,7 @@
 #include "includes/stb_perlin.h"
 
 #include <cstdint>
+
 #include <glad/glad.h>
 #include <iostream>
 
@@ -18,23 +19,24 @@ Chunk::~Chunk() {
     glDeleteBuffers(1, &EBO);
 }
 
+void Chunk::regenMesh() {
+    if (!meshFuture.valid()) {
+        meshFuture = std::async(std::launch::async, [this] { this->generateMesh(); });
+    }
+}
+
 void Chunk::Add(int x, int y, int z, BlockType blockType, bool regenerateMesh) {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z)
         return;
     ChunkData[x][y][z] = blockType;
 
     if (regenerateMesh) {
-        meshGenerated = false;
-        buildMesh();
+        regenMesh();
     }
 }
 
 void Chunk::removeBlock(int x, int y, int z) {
-    if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z)
-        return;
-    ChunkData[x][y][z] = BlockType::AIR;
-    meshGenerated = false;
-    buildMesh();
+    Add(x, y, z, BlockType::AIR, true);
 }
 
 BlockType Chunk::getBlock(int x, int y, int z) {
@@ -98,13 +100,9 @@ void Chunk::generateChunk() {
     }
 }
 
-void Chunk::buildMesh() {
-    if (VAO != 0) glDeleteVertexArrays(1, &VAO);
-    if (VBO != 0) glDeleteBuffers(1, &VBO);
-    if (EBO != 0) glDeleteBuffers(1, &EBO);
-
-    vertices.clear();
-    indices.clear();
+void Chunk::generateMesh() {
+    std::vector<float> newVertices;
+    std::vector<unsigned int> newIndices;
 
     unsigned int indexCount = 0;
 
@@ -189,79 +187,79 @@ void Chunk::buildMesh() {
                         glm::vec2 uvCoords[6];
 
                         switch (face) {
-                            case 0: // left
-                                uvCoords[0] = { uv.uMin, uv.vMax };
-                                uvCoords[1] = { uv.uMax, uv.vMin };
-                                uvCoords[2] = { uv.uMax, uv.vMax };
+                        case 0: // left
+                            uvCoords[0] = { uv.uMin, uv.vMax };
+                            uvCoords[1] = { uv.uMax, uv.vMin };
+                            uvCoords[2] = { uv.uMax, uv.vMax };
 
-                                uvCoords[3] = { uv.uMax, uv.vMin };
-                                uvCoords[4] = { uv.uMin, uv.vMax };
-                                uvCoords[5] = { uv.uMin, uv.vMin };
-                                break;
-                            case 1: // right
-                                uvCoords[0] = { uv.uMin, uv.vMax };
-                                uvCoords[1] = { uv.uMax, uv.vMax };
-                                uvCoords[2] = { uv.uMax, uv.vMin };
+                            uvCoords[3] = { uv.uMax, uv.vMin };
+                            uvCoords[4] = { uv.uMin, uv.vMax };
+                            uvCoords[5] = { uv.uMin, uv.vMin };
+                            break;
+                        case 1: // right
+                            uvCoords[0] = { uv.uMin, uv.vMax };
+                            uvCoords[1] = { uv.uMax, uv.vMax };
+                            uvCoords[2] = { uv.uMax, uv.vMin };
 
-                                uvCoords[3] = { uv.uMax, uv.vMin };
-                                uvCoords[4] = { uv.uMin, uv.vMin };
-                                uvCoords[5] = { uv.uMin, uv.vMax };
-                                break;
-                            case 2: // front
-                                uvCoords[0] = { uv.uMin, uv.vMin };
-                                uvCoords[1] = { uv.uMax, uv.vMin };
-                                uvCoords[2] = { uv.uMax, uv.vMax };
-                                uvCoords[3] = { uv.uMax, uv.vMax };
-                                uvCoords[4] = { uv.uMin, uv.vMax };
-                                uvCoords[5] = { uv.uMin, uv.vMin };
-                                break;
-                            case 3: // back
-                                uvCoords[0] = { uv.uMin, uv.vMin }; 
-                                uvCoords[1] = { uv.uMax, uv.vMax }; 
-                                uvCoords[2] = { uv.uMax, uv.vMin };
+                            uvCoords[3] = { uv.uMax, uv.vMin };
+                            uvCoords[4] = { uv.uMin, uv.vMin };
+                            uvCoords[5] = { uv.uMin, uv.vMax };
+                            break;
+                        case 2: // front
+                            uvCoords[0] = { uv.uMin, uv.vMin };
+                            uvCoords[1] = { uv.uMax, uv.vMin };
+                            uvCoords[2] = { uv.uMax, uv.vMax };
+                            uvCoords[3] = { uv.uMax, uv.vMax };
+                            uvCoords[4] = { uv.uMin, uv.vMax };
+                            uvCoords[5] = { uv.uMin, uv.vMin };
+                            break;
+                        case 3: // back
+                            uvCoords[0] = { uv.uMin, uv.vMin };
+                            uvCoords[1] = { uv.uMax, uv.vMax };
+                            uvCoords[2] = { uv.uMax, uv.vMin };
 
-                                uvCoords[3] = { uv.uMax, uv.vMax };
-                                uvCoords[4] = { uv.uMin, uv.vMin };
-                                uvCoords[5] = { uv.uMin, uv.vMax };
-                                break;
-                            case 4: // bottom 
-                                uvCoords[0] = { uv.uMin, uv.vMax };
-                                uvCoords[1] = { uv.uMax, uv.vMax }; 
-                                uvCoords[2] = { uv.uMax, uv.vMin };
+                            uvCoords[3] = { uv.uMax, uv.vMax };
+                            uvCoords[4] = { uv.uMin, uv.vMin };
+                            uvCoords[5] = { uv.uMin, uv.vMax };
+                            break;
+                        case 4: // bottom 
+                            uvCoords[0] = { uv.uMin, uv.vMax };
+                            uvCoords[1] = { uv.uMax, uv.vMax };
+                            uvCoords[2] = { uv.uMax, uv.vMin };
 
-                                uvCoords[3] = { uv.uMax, uv.vMin }; 
-                                uvCoords[4] = { uv.uMin, uv.vMin };
-                                uvCoords[5] = { uv.uMin, uv.vMax }; 
-                                break;
-                            case 5: // top
-                                uvCoords[0] = { uv.uMin, uv.vMin }; 
-                                uvCoords[1] = { uv.uMax, uv.vMax }; 
-                                uvCoords[2] = { uv.uMax, uv.vMin }; 
+                            uvCoords[3] = { uv.uMax, uv.vMin };
+                            uvCoords[4] = { uv.uMin, uv.vMin };
+                            uvCoords[5] = { uv.uMin, uv.vMax };
+                            break;
+                        case 5: // top
+                            uvCoords[0] = { uv.uMin, uv.vMin };
+                            uvCoords[1] = { uv.uMax, uv.vMax };
+                            uvCoords[2] = { uv.uMax, uv.vMin };
 
-                                uvCoords[3] = { uv.uMax, uv.vMax }; 
-                                uvCoords[4] = { uv.uMin, uv.vMin };
-                                uvCoords[5] = { uv.uMin, uv.vMax };
-                                break;
+                            uvCoords[3] = { uv.uMax, uv.vMax };
+                            uvCoords[4] = { uv.uMin, uv.vMin };
+                            uvCoords[5] = { uv.uMin, uv.vMax };
+                            break;
                         }
 
                         for (int vertex = 0; vertex < 6; ++vertex) {
                             int base = vertex * 6;
 
                             // Position
-                            vertices.push_back(vertexData[face][base + 0] + x);
-                            vertices.push_back(vertexData[face][base + 1] + y);
-                            vertices.push_back(vertexData[face][base + 2] + z);
+                            newVertices.push_back(vertexData[face][base + 0] + x);
+                            newVertices.push_back(vertexData[face][base + 1] + y);
+                            newVertices.push_back(vertexData[face][base + 2] + z);
 
                             // Normal
-                            vertices.push_back(vertexData[face][base + 3]);
-                            vertices.push_back(vertexData[face][base + 4]);
-                            vertices.push_back(vertexData[face][base + 5]);
+                            newVertices.push_back(vertexData[face][base + 3]);
+                            newVertices.push_back(vertexData[face][base + 4]);
+                            newVertices.push_back(vertexData[face][base + 5]);
 
                             // UV from atlas
-                            vertices.push_back(uvCoords[vertex].x);
-                            vertices.push_back(uvCoords[vertex].y);
+                            newVertices.push_back(uvCoords[vertex].x);
+                            newVertices.push_back(uvCoords[vertex].y);
 
-                            indices.push_back(indexCount++);
+                            newIndices.push_back(indexCount++);
                         }
                     }
                 }
@@ -269,35 +267,48 @@ void Chunk::buildMesh() {
         }
     }
 
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    glBindVertexArray(0);
-    meshGenerated = true;
+    vertices = newVertices;
+    indices = newIndices;
 }
 
+void Chunk::buildMesh() {
+    if (VAO == 0) {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+    }
+    else {
+        glBindVertexArray(VAO);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned), indices.data(), GL_DYNAMIC_DRAW);
+}
+
+
 void Chunk::render() {
-    if (!meshGenerated) {
+    if (VAO == 0) {
+        regenMesh();
+    }
+
+    if (meshFuture.valid() && meshFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+        meshFuture.get();
         buildMesh();
-        return;
+        meshFuture = std::future<void>(); 
     }
 
     glBindVertexArray(VAO);
