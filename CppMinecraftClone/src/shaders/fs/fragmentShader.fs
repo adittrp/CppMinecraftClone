@@ -6,6 +6,8 @@ uniform vec3 objectColor;
 uniform vec3 lightColor;
 uniform vec3 lightDir;
 
+uniform float opacity;
+
 in vec2 TexCoord;
 
 in vec3 FragPos;
@@ -23,7 +25,10 @@ void main()
     vec3 diffuse = diff * lightColor;
 
     vec4 texColor = texture(textureVal, TexCoord);
+    if (texColor.a < 0.1)
+        discard;
+
     vec3 result = (ambient + diffuse) * texColor.rgb * objectColor;
     
-    FragColor = vec4(result, texColor.a);
+    FragColor = vec4(result, texColor.a * opacity);
 }

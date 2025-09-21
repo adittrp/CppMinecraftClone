@@ -34,7 +34,6 @@ struct AppState {
     }
 };
 
-// Func def
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void processInput(AppState& app, GLFWwindow* window);
@@ -157,7 +156,7 @@ int main(void)
                 ourShader.setMatrix("model", model);
 
                 Chunk& chunk = chunks[chunkRow][chunkCell];
-                chunk.render();
+                chunk.render(ourShader);
             }
         }
 
@@ -281,11 +280,17 @@ void processInput(AppState& app, GLFWwindow* window) {
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-        app.player.heldBlock = BlockType::GRASS;
+        app.player.heldBlock = UVHelper::BlockType::GRASS;
     else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-        app.player.heldBlock = BlockType::DIRT;
+        app.player.heldBlock = UVHelper::BlockType::DIRT;
     else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-        app.player.heldBlock = BlockType::STONE;
+        app.player.heldBlock = UVHelper::BlockType::STONE;
+    else if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+        app.player.heldBlock = UVHelper::BlockType::OAKLOG;
+    else if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+        app.player.heldBlock = UVHelper::BlockType::OAKLEAVES;
+    else if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+        app.player.heldBlock = UVHelper::BlockType::WATER;
 
     bool sprinting = false;
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)

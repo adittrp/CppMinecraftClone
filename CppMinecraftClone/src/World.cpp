@@ -24,7 +24,7 @@ void renderWorld(Shader& ourShader) {
             ourShader.setMatrix("model", model);
 
             Chunk& chunk = chunks[chunkRow][chunkCell];
-            chunk.render();
+            chunk.render(ourShader);
         }
     }
 }

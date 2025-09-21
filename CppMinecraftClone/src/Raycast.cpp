@@ -16,7 +16,7 @@ bool isBlockSolid(glm::ivec3 pos) {
     if (localPos.x < 0 || localPos.y < 0 || localPos.z < 0 ||
         localPos.x >= CHUNK_SIZE_X || localPos.y >= CHUNK_SIZE_Y || localPos.z >= CHUNK_SIZE_Z) return false;
 
-    return chunk.getBlock(localPos.x, localPos.y, localPos.z) != BlockType::AIR;
+    return chunk.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR;
 }
 
 static inline int getSign(int v) { return (v > 0) - (v < 0); }

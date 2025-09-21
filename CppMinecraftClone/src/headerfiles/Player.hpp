@@ -4,6 +4,6 @@
 
 class Player {
 public:
-	BlockType heldBlock = BlockType::GRASS;
+	UVHelper::BlockType heldBlock = UVHelper::BlockType::GRASS;
 	int renderDistance = 4;
 };
