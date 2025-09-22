@@ -5,6 +5,9 @@
 
 #include <iostream>
 
+#include "headerfiles/Chunk.hpp"
+#include "headerfiles/World.hpp"
+
 Camera::Camera(GLFWwindow* window) :
     cameraPos(glm::vec3(WORLD_SIZE_X / 2 * CHUNK_SIZE_X, 90.0f, WORLD_SIZE_Z / 2 * CHUNK_SIZE_Z)),
     cameraTarget(glm::vec3(0.0f, 0.0f, -1.0f)),
@@ -15,7 +18,9 @@ Camera::Camera(GLFWwindow* window) :
     baseFOV(90.0f),
     lastX(SCR_WIDTH / 2.0f),
     lastY(SCR_HEIGHT / 2.0f),
-    firstMouse(true)
+    firstMouse(true),
+    isGrounded(false),
+    velocity(0.0f)
 {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -24,7 +29,7 @@ Camera::Camera(GLFWwindow* window) :
 }
 
 void Camera::processCameraInput(GLFWwindow* window, float& deltaTime, bool sprinting) {
-    const float camSpeed = 15.0f * deltaTime * (sprinting ? 1.35 : 1);
+    const float camSpeed = (curPlayer.physicalState ? 5.0f : 15.0f) * deltaTime * (sprinting ? 1.35 : 1);
 
     glm::vec3 forward = glm::normalize(glm::vec3(cameraTarget.x, 0.0f, cameraTarget.z));
     glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -40,10 +45,27 @@ void Camera::processCameraInput(GLFWwindow* window, float& deltaTime, bool sprin
         cameraPos += camSpeed * move;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        cameraPos.y += camSpeed / 1.25f;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        cameraPos.y -= camSpeed / 1.25f;
+    if (curPlayer.physicalState) {
+        float maxDistance = groundedCheck(velocity);
+
+        if (!isGrounded || velocity > 0.0f) {
+            velocity = std::max(velocity - (deltaTime / 4.0f), -0.5f);
+            cameraPos.y += velocity;
+        }
+        else {
+            if (maxDistance <= -0.001f) cameraPos.y += std::max(velocity, maxDistance);
+            else velocity = 0.0f;
+
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+                velocity = 0.1f;
+        }
+    }
+    else {
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+            cameraPos.y += camSpeed / 1.25f;
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+            cameraPos.y -= camSpeed / 1.25f;
+    }
 }
 
 void Camera::setCamera(Shader& ourShader) {
@@ -93,6 +115,41 @@ void Camera::updateFOV(bool isSprinting, float deltaTime) {
     float minFov = baseFOV;
     float maxFov = baseFOV * 1.10f;
     fov = glm::clamp(fov, minFov, maxFov);
+}
+
+float Camera::horizontalCollision(float move) {
+
+}
+
+float Camera::groundedCheck(float currentVelocity) {
+    isGrounded = false;
+    float maxDistance = 0.0f;
+
+    float playerFeet = cameraPos.y - 1.8f + currentVelocity;
+
+    int chunkX = round(cameraPos.x) / CHUNK_SIZE_X;
+    int chunkZ = round(cameraPos.z) / CHUNK_SIZE_Z;
+    if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z)
+        return 0.0f;
+
+    Chunk& chunk = chunks[chunkX][chunkZ];
+    glm::ivec3 localPos = glm::ivec3(round(cameraPos.x), round(playerFeet), round(cameraPos.z))
+        - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
+
+    if (localPos.x < 0 || localPos.y < 0 || localPos.z < 0 ||
+        localPos.x >= CHUNK_SIZE_X || localPos.y >= CHUNK_SIZE_Y || localPos.z >= CHUNK_SIZE_Z) {
+        std::cout << "ah2h" << std::endl;
+        std::cout << localPos.x << " " << localPos.y << " " << localPos.z << std::endl;
+        return 0.0f;
+    }
+
+    if (chunk.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR) {
+        isGrounded = true;
+        float blockTop = round(playerFeet) + 1.0f;
+        maxDistance = blockTop - playerFeet;
+    }
+
+    return maxDistance;
 }
 
 void Camera::mouse_callback(GLFWwindow* window, double xpos, double ypos) {

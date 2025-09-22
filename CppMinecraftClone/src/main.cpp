@@ -28,9 +28,13 @@ struct AppState {
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
+    unsigned int invSlotVAOs[9];
+    unsigned int invSlotVBOs[9];
 
-    AppState(GLFWwindow* window)
-        : cam(window) {
+    AppState(GLFWwindow* window):
+        cam(window)
+    {
+        cam.curPlayer = player;
     }
 };
 
@@ -41,6 +45,8 @@ void processInput(AppState& app, GLFWwindow* window);
 unsigned int loadTexture(const char* path);
 
 void crosshairSetUp(unsigned int& VAO, unsigned int& VBO);
+void updateSlots(AppState& app);
+void invSlotSetUp(unsigned int& VAO, unsigned int& VBO, int index, bool selected);
 void highlightBlockSetUp(unsigned int& VAO, unsigned int& VBO);
 //
 
@@ -55,7 +61,9 @@ int main(void)
 
 
     // Create Window
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Hello World", NULL, NULL);
+    GLFWmonitor* primary = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(primary);
+    GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Hello World", primary, NULL);
     AppState app(window);
     if (!window)
     {
@@ -109,7 +117,18 @@ int main(void)
 
     crosshairSetUp(crossVAO, crossVBO);
 
+    // Set up invSlot
+    Shader invSlotShader("src/shaders/vs/invslot.vs", "src/shaders/fs/invslot.fs");
+
+    for (int i = 0; i < 9; ++i) {
+        unsigned int invSlotVAO, invSlotVBO;
+        invSlotSetUp(invSlotVAO, invSlotVBO, i, i == app.player.currentInventorySlot);
+        app.invSlotVAOs[i] = invSlotVAO;
+        app.invSlotVBOs[i] = invSlotVBO;
+    }
+
     // --------------------
+
     Shader highlightShader("src/shaders/vs/highlight.vs", "src/shaders/fs/highlight.fs");
     unsigned int highlightVAO, highlightVBO;
 
@@ -172,7 +191,30 @@ int main(void)
         glLineWidth(2.0f);
         glDrawArrays(GL_LINES, 0, 4);
         glBindVertexArray(0);
+        // -------------------------
 
+        // Inv. Slot stuff
+        invSlotShader.use();
+        for (int i = 0; i < 9; i++) {
+            if (i == app.player.currentInventorySlot)
+                continue;
+
+            glm::vec3 slotColor(0.75f, 0.75f, 0.75f);
+            invSlotShader.setVec3("objectColor", slotColor);
+            glBindVertexArray(app.invSlotVAOs[i]);
+            glLineWidth(3.0f);
+            glDrawArrays(GL_LINES, 0, 8);
+        }
+
+        // Selected Slot
+        glm::vec3 slotColor(1.0f, 1.0f, 1.0f);
+        invSlotShader.setVec3("objectColor", slotColor);
+        glBindVertexArray(app.invSlotVAOs[app.player.currentInventorySlot]);
+        glLineWidth(5.0f);
+        glDrawArrays(GL_LINES, 0, 8);
+
+
+        glBindVertexArray(0);
         glEnable(GL_DEPTH_TEST);
         // -------------------------
 
@@ -279,18 +321,51 @@ void processInput(AppState& app, GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
         app.player.heldBlock = UVHelper::BlockType::GRASS;
-    else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        app.player.currentInventorySlot = 0;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
         app.player.heldBlock = UVHelper::BlockType::DIRT;
-    else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+        app.player.currentInventorySlot = 1;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) {
         app.player.heldBlock = UVHelper::BlockType::STONE;
-    else if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+        app.player.currentInventorySlot = 2;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
         app.player.heldBlock = UVHelper::BlockType::OAKLOG;
-    else if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+        app.player.currentInventorySlot = 3;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
         app.player.heldBlock = UVHelper::BlockType::OAKLEAVES;
-    else if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+        app.player.currentInventorySlot = 4;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) {
         app.player.heldBlock = UVHelper::BlockType::WATER;
+        app.player.currentInventorySlot = 5;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS) {
+        //app.player.heldBlock = UVHelper::BlockType::WATER;
+        app.player.currentInventorySlot = 6;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS) {
+        //app.player.heldBlock = UVHelper::BlockType::WATER;
+        app.player.currentInventorySlot = 7;
+        updateSlots(app);
+    }
+    else if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS) {
+        //app.player.heldBlock = UVHelper::BlockType::WATER;
+        app.player.currentInventorySlot = 8;
+        updateSlots(app);
+    }
 
     bool sprinting = false;
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
@@ -350,6 +425,61 @@ void crosshairSetUp(unsigned int& VAO, unsigned int& VBO) {
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(crosshairVertices), crosshairVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+}
+
+void updateSlots(AppState& app) {
+    for (int i = 0; i < 9; ++i) {
+        unsigned int invSlotVAO, invSlotVBO;
+        invSlotSetUp(invSlotVAO, invSlotVBO, i, i == app.player.currentInventorySlot);
+        app.invSlotVAOs[i] = invSlotVAO;
+        app.invSlotVBOs[i] = invSlotVBO;
+    }
+}
+void invSlotSetUp(unsigned int& VAO, unsigned int& VBO, int index, bool selected) {
+    const float leftX = -0.3f;
+    const float rightX = 0.3f;
+
+    const float bottomY = -1.0f;
+    const float topY = -0.88f;
+
+    float leftOffset{};
+    float rightOffset{};
+    float verticalOffset{};
+    if (selected) {
+        leftOffset = 0.0025f;
+        rightOffset = 0.0025f;
+        verticalOffset = 0.005f;
+    }
+    else {
+        leftOffset = index == 0 ? 0.0015f : 0.0f;
+        rightOffset = index == 8 ? 0.0015f : 0.0f;
+        verticalOffset = 0.003f;
+    }
+    const float invSlotXJumps = 0.6f / 9;
+
+    float invSlotVertices[] = {
+        leftX + (invSlotXJumps * index), topY,
+        leftX + (invSlotXJumps * index), bottomY,
+
+        leftX + (invSlotXJumps * (index+1)), topY,
+        leftX + (invSlotXJumps * (index+1)), bottomY,
+
+        leftX + (invSlotXJumps * index), topY - verticalOffset,
+        leftX + (invSlotXJumps * (index+1)), topY - verticalOffset,
+
+        leftX + (invSlotXJumps * index), bottomY + verticalOffset,
+        leftX + (invSlotXJumps * (index + 1)), bottomY + verticalOffset
+    };
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(invSlotVertices), invSlotVertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);

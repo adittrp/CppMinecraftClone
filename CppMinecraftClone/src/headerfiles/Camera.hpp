@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Shader.hpp"
+#include "Player.hpp"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -12,6 +13,8 @@ const unsigned int SCR_HEIGHT = 1080;
 class Camera {
 public:
     Camera(GLFWwindow* window);
+
+    Player curPlayer;
 
     void processCameraInput(GLFWwindow* window, float& deltaTime, bool sprinting);
     void setCamera(Shader& ourShader);
@@ -25,7 +28,15 @@ public:
     
     void updateFOV(bool isSprinting, float deltaTime);
 
+    float Camera::horizontalCollision(float move);
+    float groundedCheck(float currentVelocity);
+
 private:
+    // Gravity stuff
+    bool isGrounded;
+    float velocity;
+    // ----
+
     glm::vec3 cameraPos;
     glm::vec3 cameraTarget;
     glm::vec3 cameraUp;

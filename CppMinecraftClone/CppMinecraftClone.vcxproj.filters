@@ -76,5 +76,7 @@
     <None Include="src\shaders\vs\crosshair.vs" />
     <None Include="src\shaders\fs\highlight.fs" />
     <None Include="src\shaders\vs\highlight.vs" />
+    <None Include="src\shaders\fs\invslot.fs" />
+    <None Include="src\shaders\vs\invslot.vs" />
   </ItemGroup>
 </Project>
