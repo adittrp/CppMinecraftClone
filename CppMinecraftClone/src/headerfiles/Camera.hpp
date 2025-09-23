@@ -23,17 +23,19 @@ public:
     glm::vec3 getCamTarget();
     glm::vec3 getCamUp();
 
-    float getYaw();
-    float getPitch();
+    double getYaw();
+    double getPitch();
     
     void updateFOV(bool isSprinting, float deltaTime);
 
-    float Camera::horizontalCollision(float move);
+    void horizontalCollision(glm::vec3 move);
     float groundedCheck(float currentVelocity);
 
 private:
     // Gravity stuff
     bool isGrounded;
+    bool collidingX;
+    bool collidingZ;
     float velocity;
     // ----
 
@@ -41,14 +43,14 @@ private:
     glm::vec3 cameraTarget;
     glm::vec3 cameraUp;
 
-    float yaw;
-    float pitch;
+    double yaw;
+    double pitch;
 
-    float baseFOV;
-    float fov;
+    double baseFOV;
+    double fov;
 
-    float lastX;
-    float lastY;
+    double lastX;
+    double lastY;
     bool firstMouse;
 
     static void mouse_callback(GLFWwindow* window, double xpos, double ypos);
