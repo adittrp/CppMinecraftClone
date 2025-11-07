@@ -31,7 +31,10 @@ struct AppState {
     unsigned int invSlotVAOs[9];
     unsigned int invSlotVBOs[9];
 
-    AppState(GLFWwindow* window):
+    unsigned int uiSlotVAOs[6];
+    unsigned int uiSlotVBOs[6];
+
+    AppState(GLFWwindow* window) :
         cam(window)
     {
         cam.curPlayer = player;
@@ -47,6 +50,7 @@ unsigned int loadTexture(const char* path);
 void crosshairSetUp(unsigned int& VAO, unsigned int& VBO);
 void updateSlots(AppState& app);
 void invSlotSetUp(unsigned int& VAO, unsigned int& VBO, int index, bool selected);
+void uiSlotSetUp(unsigned int& VAO, unsigned int& VBO, int index);
 void highlightBlockSetUp(unsigned int& VAO, unsigned int& VBO);
 //
 
@@ -63,7 +67,7 @@ int main(void)
     // Create Window
     GLFWmonitor* primary = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(primary);
-    GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Hello World", primary, NULL);
+    GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Minecraft Clone", primary, NULL);
     AppState app(window);
     if (!window)
     {
@@ -126,7 +130,17 @@ int main(void)
         app.invSlotVAOs[i] = invSlotVAO;
         app.invSlotVBOs[i] = invSlotVBO;
     }
-
+    
+    // Set up inventory slot icons
+    Shader uiSlotShader("src/shaders/vs/uislot.vs", "src/shaders/fs/uislot.fs");
+    ourShader.setInt("textureVal", 0);
+    
+    for (int i = 0; i < 6; ++i) {
+        unsigned int uiSlotVAO, uiSlotVBO;
+        uiSlotSetUp(uiSlotVAO, uiSlotVBO, i);
+        app.uiSlotVAOs[i] = uiSlotVAO;
+        app.uiSlotVBOs[i] = uiSlotVBO;
+    }
     // --------------------
 
     Shader highlightShader("src/shaders/vs/highlight.vs", "src/shaders/fs/highlight.fs");
@@ -182,7 +196,7 @@ int main(void)
         // Highlight if looking at a block
         highlightBlock(app.cam, highlightShader, highlightVAO);
 
-        // Cross hair stuff
+        // Cross hair
         glDisable(GL_DEPTH_TEST);
 
         crosshairShader.use();
@@ -193,7 +207,7 @@ int main(void)
         glBindVertexArray(0);
         // -------------------------
 
-        // Inv. Slot stuff
+        // Inv. Slot
         invSlotShader.use();
         for (int i = 0; i < 9; i++) {
             if (i == app.player.currentInventorySlot)
@@ -215,8 +229,17 @@ int main(void)
 
 
         glBindVertexArray(0);
-        glEnable(GL_DEPTH_TEST);
         // -------------------------
+
+        // UI. Slot
+        uiSlotShader.use();
+        for (int i = 0; i < 6; i++) {
+            glBindVertexArray(app.uiSlotVAOs[i]);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
+        // ----------------------------
+
+        glEnable(GL_DEPTH_TEST);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -352,17 +375,17 @@ void processInput(AppState& app, GLFWwindow* window) {
         updateSlots(app);
     }
     else if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS) {
-        //app.player.heldBlock = UVHelper::BlockType::WATER;
+        app.player.heldBlock = UVHelper::BlockType::AIR;
         app.player.currentInventorySlot = 6;
         updateSlots(app);
     }
     else if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS) {
-        //app.player.heldBlock = UVHelper::BlockType::WATER;
+        app.player.heldBlock = UVHelper::BlockType::AIR;
         app.player.currentInventorySlot = 7;
         updateSlots(app);
     }
     else if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS) {
-        //app.player.heldBlock = UVHelper::BlockType::WATER;
+        app.player.heldBlock = UVHelper::BlockType::AIR;
         app.player.currentInventorySlot = 8;
         updateSlots(app);
     }
@@ -483,6 +506,40 @@ void invSlotSetUp(unsigned int& VAO, unsigned int& VBO, int index, bool selected
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+}
+
+void uiSlotSetUp(unsigned int& VAO, unsigned int& VBO, int index) {
+    const float leftX = -0.29f;
+    const float rightX = 0.29f;
+
+    const float bottomY = -0.98f;
+    const float topY = -0.90f;
+    const float uiSlotXJumps = 0.6f / 9;
+    const float x0 = leftX + (uiSlotXJumps * index);
+    const float x1 = leftX + (uiSlotXJumps * (index + 1)) - 0.02f;
+
+    UVHelper::BlockUV uvSet = UVHelper::blockTextures[index+1];
+    UVHelper::UVCoords uv = UVHelper::getUVCoords(uvSet.side, 3, 16, 48);
+
+    float uiSlotVertices[] = {
+        x0, topY,       uv.uMin, uv.vMin,
+        x0, bottomY,    uv.uMin, uv.vMax,
+        x1, topY,       uv.uMax, uv.vMin,
+        x1, bottomY,    uv.uMax, uv.vMax
+    };
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(uiSlotVertices), uiSlotVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 }
 
 void highlightBlockSetUp(unsigned int& VAO, unsigned int& VBO) {

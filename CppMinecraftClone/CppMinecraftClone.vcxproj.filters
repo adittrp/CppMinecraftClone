@@ -78,5 +78,7 @@
     <None Include="src\shaders\vs\highlight.vs" />
     <None Include="src\shaders\fs\invslot.fs" />
     <None Include="src\shaders\vs\invslot.vs" />
+    <None Include="src\shaders\vs\uislot.vs" />
+    <None Include="src\shaders\fs\uislot.fs" />
   </ItemGroup>
 </Project>

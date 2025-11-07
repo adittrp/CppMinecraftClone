@@ -153,9 +153,11 @@
     <None Include="src\shaders\fs\crosshair.fs" />
     <None Include="src\shaders\fs\highlight.fs" />
     <None Include="src\shaders\fs\invslot.fs" />
+    <None Include="src\shaders\fs\uislot.fs" />
     <None Include="src\shaders\vs\crosshair.vs" />
     <None Include="src\shaders\vs\highlight.vs" />
     <None Include="src\shaders\vs\invslot.vs" />
+    <None Include="src\shaders\vs\uislot.vs" />
     <None Include="src\shaders\vs\vertexShader.vs" />
     <None Include="src\shaders\fs\fragmentShader.fs" />
   </ItemGroup>

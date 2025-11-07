@@ -28,14 +28,13 @@ public:
     
     void updateFOV(bool isSprinting, float deltaTime);
 
-    void horizontalCollision(glm::vec3 move);
+    bool horizontalCollision(glm::vec3 pos);
     float groundedCheck(float currentVelocity);
+    void headerCheck(float& currentVelocity);
 
 private:
     // Gravity stuff
     bool isGrounded;
-    bool collidingX;
-    bool collidingZ;
     float velocity;
     // ----
 

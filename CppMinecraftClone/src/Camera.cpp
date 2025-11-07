@@ -10,7 +10,7 @@
 
 Camera::Camera(GLFWwindow* window) :
     cameraPos(glm::vec3(WORLD_SIZE_X / 2 * CHUNK_SIZE_X, 90.0f, WORLD_SIZE_Z / 2 * CHUNK_SIZE_Z)),
-    //cameraPos(glm::vec3(0, 90.0f, 0)),
+    //cameraPos(glm::vec3(1.0f, 90.0f, 1.0f)),
     cameraTarget(glm::vec3(0.0f, 0.0f, -1.0f)),
     cameraUp(glm::vec3(0.0f, 1.0f, 0.0f)),
     yaw(45.0f),
@@ -30,41 +30,52 @@ Camera::Camera(GLFWwindow* window) :
 }
 
 void Camera::processCameraInput(GLFWwindow* window, float& deltaTime, bool sprinting) {
-    const float camSpeed = (curPlayer.physicalState ? 5.0f : 15.0f) * deltaTime * (sprinting ? 1.25f : 1);
+    const float camSpeed = (curPlayer.physicalState ? 4.0f : 15.0f) * deltaTime * (sprinting ? 1.25f : 1);
 
     glm::vec3 forward = glm::normalize(glm::vec3(cameraTarget.x, 0.0f, cameraTarget.z));
     glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
 
     glm::vec3 move(0.0f);
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) move += forward;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) move -= forward;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) move -= right;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) move += right;
 
-
     if (curPlayer.physicalState) {
         float maxDistance = groundedCheck(velocity);
 
+
         if (!isGrounded || velocity > 0.0f) {
-            velocity = std::max(velocity - (deltaTime / 4.0f), -0.5f);
+            velocity = std::max(velocity - (deltaTime / 3.0f), -0.5f);
+            if (velocity > 0.0f) headerCheck(velocity);
+
             cameraPos.y += velocity;
         }
         else {
             if (maxDistance <= -0.00001f) cameraPos.y += std::max(velocity, maxDistance);
             else velocity = 0.0f;
 
-            // TODO (Need to check if there is a block above the head
-            // TODO FIX DO IMMEDIETLy
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
                 velocity = 0.1f;
         }
 
         if (glm::dot(move, move) > 0.0f) {
             move = glm::normalize(move) * camSpeed;
-            horizontalCollision(move);
 
-            if (!collidingX) cameraPos.x += move.x;
-            if (!collidingZ) cameraPos.z += move.z;
+            glm::vec3 tryMove = move;
+
+            if (move.x != 0.0f) {
+                glm::vec3 moveX{ move.x, 0.0f, 0.0f };
+                if (horizontalCollision(moveX)) tryMove.x = 0.0f;
+            }
+
+            if (move.z != 0.0f) {
+                glm::vec3 moveZ{ 0.0f, 0.0f, move.z };
+                if (horizontalCollision(moveZ)) tryMove.z = 0.0f;
+            }
+
+            cameraPos += tryMove;
         }
     }
     else {
@@ -129,62 +140,29 @@ void Camera::updateFOV(bool isSprinting, float deltaTime) {
     fov = glm::clamp(fov, minFov, maxFov);
 }
 
-void Camera::horizontalCollision(glm::vec3 move) {
-    collidingX = false;
-    collidingZ = false;
-    glm::vec3 maxDistance = move;
+bool Camera::horizontalCollision(glm::vec3 move) {
+    const float playerWidth{ 0.2f };
 
+    for (int dx = -1; dx <= 1; dx += 2) {
+        for (int dz = -1; dz <= 1; dz += 2) {
+            glm::vec3 offset = glm::vec3(playerWidth * dx, 0.0f, playerWidth * dz);
+            glm::vec3 newPos = cameraPos + move + offset;
 
-    // IMPROVE (When you move exclusively in the x direction, there technically is no z width which causes some clipping) FIX TODO
-    // TODO
-    const float playerWidthX = 0.2f * (move.x < 0 ? -1 : 1);
-    const float playerWidthZ = 0.2f * (move.z < 0 ? -1 : 1);
+            int chunkX = round(newPos.x) / CHUNK_SIZE_X;
+            int chunkZ = round(newPos.z) / CHUNK_SIZE_Z;
+            if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) continue;
 
-    glm::vec3 newPos = cameraPos + move + glm::vec3(playerWidthX, 0.0f, playerWidthZ);
+            Chunk& chunk = chunks[chunkX][chunkZ];
+            for (float yOffset : { -1.79f, -0.5f }) {
+                glm::ivec3 localPos = glm::ivec3(round(newPos.x), round(cameraPos.y + yOffset), round(newPos.z))
+                    - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
 
-    // Check X
-    int chunkX = round(newPos.x) / CHUNK_SIZE_X;
-    int chunkZ = round(cameraPos.z) / CHUNK_SIZE_Z;
-    if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) return;
+                if (chunk.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR) return true;
+            }
+        }
+    }
 
-    Chunk& rChunkX = chunks[chunkX][chunkZ];
-    glm::ivec3 localPos = glm::ivec3(round(newPos.x), round(cameraPos.y - 1.79f), round(cameraPos.z))
-        - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
-
-    if (rChunkX.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR) collidingX = true;
-
-    // Check Z
-    chunkX = round(cameraPos.x) / CHUNK_SIZE_X;
-    chunkZ = round(newPos.z) / CHUNK_SIZE_Z;
-    if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) return;
-
-    Chunk& rChunkZ = chunks[chunkX][chunkZ];
-    localPos = glm::ivec3(round(cameraPos.x), round(cameraPos.y - 1.79f), round(newPos.z))
-        - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
-
-    if (rChunkZ.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR) collidingZ = true;
-
-    // Check X 2
-    chunkX = round(newPos.x) / CHUNK_SIZE_X;
-    chunkZ = round(cameraPos.z) / CHUNK_SIZE_Z;
-    if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) return;
-
-    Chunk& rChunkX2 = chunks[chunkX][chunkZ];
-    localPos = glm::ivec3(round(newPos.x), round(cameraPos.y - 0.79f), round(cameraPos.z))
-        - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
-
-    if (rChunkX2.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR) collidingX = true;
-
-    // Check Z 2
-    chunkX = round(cameraPos.x) / CHUNK_SIZE_X;
-    chunkZ = round(newPos.z) / CHUNK_SIZE_Z;
-    if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) return;
-
-    Chunk& rChunkZ2 = chunks[chunkX][chunkZ];
-    localPos = glm::ivec3(round(cameraPos.x), round(cameraPos.y - 0.79f), round(newPos.z))
-        - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
-
-    if (rChunkZ2.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR) collidingZ = true;
+    return false;
 }
 
 float Camera::groundedCheck(float currentVelocity) {
@@ -194,8 +172,8 @@ float Camera::groundedCheck(float currentVelocity) {
     const float playerWidth = 0.2f;
     const float playerFeet = cameraPos.y - 1.8f + currentVelocity;
 
-    for (int x = 0; x <= 2; x++) {
-        for (int z = 0; z <= 2; z++) {
+    for (int x = 0; x < 2; x++) {
+        for (int z = 0; z < 2; z++) {
             glm::ivec3 newPos(round(cameraPos.x + playerWidth * (x == 0 ? -1 : 1)), round(playerFeet), round(cameraPos.z + playerWidth * (z == 0 ? -1 : 1)));
 
             int chunkX = newPos.x / CHUNK_SIZE_X;
@@ -219,6 +197,31 @@ end:
     }
 
     return maxDistance;
+}
+
+void Camera::headerCheck(float& currentVelocity) {
+    float maxDistance = 0.0f;
+
+    const float playerWidth = 0.2f;
+    const float playerHead = cameraPos.y + 0.1f + currentVelocity;
+
+    for (int x = 0; x < 2; x++) {
+        for (int z = 0; z < 2; z++) {
+            glm::ivec3 newPos(round(cameraPos.x + playerWidth * (x == 0 ? -1 : 1)), round(playerHead), round(cameraPos.z + playerWidth * (z == 0 ? -1 : 1)));
+
+            int chunkX = newPos.x / CHUNK_SIZE_X;
+            int chunkZ = newPos.z / CHUNK_SIZE_Z;
+            if (chunkX < 0 || chunkX >= WORLD_SIZE_X || chunkZ < 0 || chunkZ >= WORLD_SIZE_Z) return;
+
+            Chunk& chunk = chunks[chunkX][chunkZ];
+            glm::ivec3 localPos = newPos - glm::ivec3(chunkX * CHUNK_SIZE_X, 0, chunkZ * CHUNK_SIZE_Z);
+
+            if (chunk.getBlock(localPos.x, localPos.y, localPos.z) != UVHelper::BlockType::AIR) {
+                velocity = 0.0f;
+                return;
+            }
+        }
+    }
 }
 
 void Camera::mouse_callback(GLFWwindow* window, double xpos, double ypos) {
