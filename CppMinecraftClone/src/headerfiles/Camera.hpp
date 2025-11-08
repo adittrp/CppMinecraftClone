@@ -12,9 +12,9 @@ const unsigned int SCR_HEIGHT = 1080;
 
 class Camera {
 public:
-    Camera(GLFWwindow* window);
+    Camera(GLFWwindow* window, Player& player);
 
-    Player curPlayer;
+    Player& curPlayer;
 
     void processCameraInput(GLFWwindow* window, float& deltaTime, bool sprinting);
     void setCamera(Shader& ourShader);
@@ -31,6 +31,7 @@ public:
     bool horizontalCollision(glm::vec3 pos);
     float groundedCheck(float currentVelocity);
     void headerCheck(float& currentVelocity);
+    bool blockPlaceCheck(glm::ivec3 blockPlacePos);
 
 private:
     // Gravity stuff

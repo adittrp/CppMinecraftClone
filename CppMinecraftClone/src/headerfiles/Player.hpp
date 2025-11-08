@@ -11,4 +11,6 @@ public:
 
 	UVHelper::BlockType heldBlock;
 	int renderDistance;
+
+	void gamemodeDescription();
 };

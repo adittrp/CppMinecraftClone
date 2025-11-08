@@ -23,8 +23,10 @@ struct AppState {
     Camera cam;
     Player player;
 
-    bool wireFramed = false;
-    bool qKeyPressedLastFrame = false;
+    bool spacePressedLastFrame = false;
+    bool firstSpaceTap = false;
+    float lastSpaceTapTime = 0.0f;
+
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
@@ -35,9 +37,8 @@ struct AppState {
     unsigned int uiSlotVBOs[6];
 
     AppState(GLFWwindow* window) :
-        cam(window)
+        cam(window, player)
     {
-        cam.curPlayer = player;
     }
 };
 
@@ -63,6 +64,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    std::cout << "Double click the spacebar to toggle spectator/survival mode\n" << std::endl;
 
     // Create Window
     GLFWmonitor* primary = glfwGetPrimaryMonitor();
@@ -158,8 +160,6 @@ int main(void)
         app.lastFrame = time;
 
         float fps = 1.0f / app.deltaTime;
-        if (fps < 50)
-            std::cout <<  " FPS: " << fps << std::endl;
 
         processInput(app, window);
         glClearColor(0.2f, 0.3f, 0.3f, 1);
@@ -301,6 +301,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
         if (currentRayResult.hit) {
             glm::ivec3 blockPos = currentRayResult.blockPos + currentRayResult.faceNormal;
+            if (!app->cam.blockPlaceCheck(blockPos)) return;
 
             int chunkX = blockPos.x / CHUNK_SIZE_X;
             int chunkZ = blockPos.z / CHUNK_SIZE_Z;
@@ -396,12 +397,26 @@ void processInput(AppState& app, GLFWwindow* window) {
     app.cam.updateFOV(sprinting, app.deltaTime);
     app.cam.processCameraInput(window, app.deltaTime, sprinting);
 
-    bool qKeyPressed = glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS;
-    if (qKeyPressed && !app.qKeyPressedLastFrame) {
-        app.wireFramed = !app.wireFramed;
-        glPolygonMode(GL_FRONT_AND_BACK, app.wireFramed ? GL_LINE : GL_FILL);
+    // Double click space check
+    bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+
+    if (spacePressed && !app.spacePressedLastFrame) {
+        float currentTime = static_cast<float>(glfwGetTime());
+
+        if (app.firstSpaceTap && (currentTime - app.lastSpaceTapTime) <= 0.3f) {
+            bool isStatePhysical = !app.player.physicalState;
+            app.player.physicalState = isStatePhysical;
+            app.player.gamemodeDescription();
+
+            app.firstSpaceTap = false;
+        } else {
+            app.firstSpaceTap = true;
+            app.lastSpaceTapTime = currentTime;
+        }
     }
-    app.qKeyPressedLastFrame = qKeyPressed;
+
+    app.spacePressedLastFrame = spacePressed;
+
 }
 
 unsigned int loadTexture(const char* path) {

@@ -8,7 +8,7 @@
 #include "headerfiles/Chunk.hpp"
 #include "headerfiles/World.hpp"
 
-Camera::Camera(GLFWwindow* window) :
+Camera::Camera(GLFWwindow* window, Player& player) :
     cameraPos(glm::vec3(WORLD_SIZE_X / 2 * CHUNK_SIZE_X, 90.0f, WORLD_SIZE_Z / 2 * CHUNK_SIZE_Z)),
     //cameraPos(glm::vec3(1.0f, 90.0f, 1.0f)),
     cameraTarget(glm::vec3(0.0f, 0.0f, -1.0f)),
@@ -21,7 +21,8 @@ Camera::Camera(GLFWwindow* window) :
     lastY(SCR_HEIGHT / 2.0f),
     firstMouse(true),
     isGrounded(false),
-    velocity(0.0f)
+    velocity(0.0f),
+    curPlayer(player)
 {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -79,6 +80,8 @@ void Camera::processCameraInput(GLFWwindow* window, float& deltaTime, bool sprin
         }
     }
     else {
+        velocity = 0.0f;
+
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
             cameraPos.y += camSpeed / 1.25f;
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
@@ -200,8 +203,6 @@ end:
 }
 
 void Camera::headerCheck(float& currentVelocity) {
-    float maxDistance = 0.0f;
-
     const float playerWidth = 0.2f;
     const float playerHead = cameraPos.y + 0.1f + currentVelocity;
 
@@ -222,6 +223,19 @@ void Camera::headerCheck(float& currentVelocity) {
             }
         }
     }
+}
+
+bool Camera::blockPlaceCheck(glm::ivec3 blockPlacePos) {
+    const float playerWidth = 0.2f;
+
+    for (int x = 0; x < 2; x++) {
+        for (int z = 0; z < 2; z++) {
+            if (!(round(cameraPos.x + playerWidth * (x == 0 ? -1 : 1)) == blockPlacePos.x && round(cameraPos.z + playerWidth * (z == 0 ? -1 : 1)) == blockPlacePos.z)) continue;
+            if (round(cameraPos.y) == blockPlacePos.y || round(cameraPos.y - 1.0f) == blockPlacePos.y) return false;
+        }
+    }
+
+    return true;
 }
 
 void Camera::mouse_callback(GLFWwindow* window, double xpos, double ypos) {
